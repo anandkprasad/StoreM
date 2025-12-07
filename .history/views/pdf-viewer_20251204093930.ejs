@@ -1,0 +1,342 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Secure PDF Viewer</title>
+
+<!-- PDF.js from UNPKG -->
+<script src="https://unpkg.com/pdfjs-dist@3.11.172/build/pdf.min.js"></script>
+
+<style>
+  html,body { height:100%; margin:0; background:#000; }
+  #viewer {
+    position:fixed;
+    inset:0;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    overflow:hidden; /* hide any native scrollbars */
+    background:#111;
+    -webkit-user-select:none;
+    -moz-user-select:none;
+    user-select:none;
+    touch-action:none;
+  }
+
+  /* canvas container full-screen */
+  .pageContainer {
+    width:100vw;
+    height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    position:relative;
+    overflow:hidden;
+  }
+
+  canvas.pdfPage {
+    max-width:100%;
+    max-height:100%;
+    width:auto;
+    height:auto;
+    image-rendering:optimizeQuality;
+    -webkit-touch-callout: none;
+    -webkit-user-drag: none;
+    user-drag: none;
+    -webkit-user-select: none;
+    user-select:none;
+    pointer-events: none; /* disable right-drag etc on the canvas itself */
+  }
+
+  /* watermark overlay */
+  #watermark {
+    position:absolute;
+    top:0; left:0; right:0; bottom:0;
+    pointer-events:none;
+    overflow:hidden;
+    display:block;
+    z-index:50;
+  }
+
+  .wmText {
+    position:absolute;
+    transform:rotate(-30deg);
+    left:-20%;
+    top:30%;
+    font-family: "Segoe UI", Roboto, Arial, sans-serif;
+    font-size:24px;
+    opacity:0.10;
+    white-space:nowrap;
+    letter-spacing:2px;
+    -webkit-user-select:none;
+    user-select:none;
+  }
+
+  /* small protective overlay to make screenshotting slightly less attractive */
+  #blurLayer {
+    position:absolute;
+    inset:0;
+    z-index:60;
+    pointer-events:none;
+    mix-blend-mode:normal;
+    background:transparent;
+  }
+
+  /* hide scrollbars if any appear */
+  ::-webkit-scrollbar { display: none; }
+</style>
+</head>
+<body>
+<div id="viewer" tabindex="0" aria-label="Secure PDF Viewer">
+  <div class="pageContainer" id="pageContainer">
+    <canvas id="pdfCanvas" class="pdfPage"></canvas>
+    <div id="watermark" aria-hidden="true"></div>
+    <div id="blurLayer" aria-hidden="true"></div>
+  </div>
+</div>
+
+<script>
+/*
+  CONFIG - Edit these before deploying
+*/
+const PDF_URL = "https://www.dropbox.com/scl/fi/fraizb3xwx6jcmd9307xq/693101df095ae9fd19fea697.pdf?rlkey=38p2ukkfqlrfcwfiv7itk4vob&raw=1";
+// IMPORTANT: for a sold PDF, replace with a short-lived signed URL served by your backend.
+// Example watermark: username / email / order id / timestamp. Provide this from the server.
+const WATERMARK_TEXT = "Purchased by: user@example.com — order #12345 — 2025-12-04";
+
+
+// PDF.js worker config (PDF.js needs workerSrc)
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://unpkg.com/pdfjs-dist@3.11.172/build/pdf.worker.min.js';
+
+const canvas = document.getElementById('pdfCanvas');
+const ctx = canvas.getContext('2d');
+const watermarkContainer = document.getElementById('watermark');
+const pageContainer = document.getElementById('pageContainer');
+
+let pdfDoc = null;
+let currentPage = 1;
+let renderInProgress = false;
+
+// Render options for better quality
+const renderScale = 1.5; // tweak for clarity vs performance
+
+// Create repeat watermark grid
+function createWatermark(text) {
+  watermarkContainer.innerHTML = '';
+  const w = window.innerWidth;
+  const h = window.innerHeight;
+  // compute grid
+  const cols = Math.ceil(w / 400) + 2;
+  const rows = Math.ceil(h / 200) + 2;
+  for (let r=0; r<rows; r++){
+    for (let c=0; c<cols; c++){
+      const span = document.createElement('div');
+      span.className = 'wmText';
+      span.style.left = (c*350)+'px';
+      span.style.top = (r*180)+'px';
+      span.style.fontSize = Math.max(14, Math.floor(Math.min(w,h)/60)) + 'px';
+      span.style.opacity = 0.08 + Math.random()*0.04;
+      span.textContent = text;
+      watermarkContainer.appendChild(span);
+    }
+  }
+}
+
+// fetch PDF as arrayBuffer and load via PDF.js
+async function loadPdf(url) {
+  try {
+    // Use fetch with credentials: 'omit' (or include depending on your server)
+    const resp = await fetch(url, { method: 'GET', mode: 'cors', cache: 'no-store' });
+    if (!resp.ok) throw new Error('Failed to fetch PDF: ' + resp.status);
+    const ab = await resp.arrayBuffer();
+    const loadingTask = pdfjsLib.getDocument({ data: ab, disableFontFace: true /* discourage loading custom fonts*/ });
+    pdfDoc = await loadingTask.promise;
+    renderPage(currentPage);
+  } catch (err) {
+    console.error(err);
+    alert("Failed to load PDF. Make sure the URL is accessible and CORS permits fetch.");
+  }
+}
+
+async function renderPage(pageNum) {
+  if (!pdfDoc) return;
+  renderInProgress = true;
+  const page = await pdfDoc.getPage(pageNum);
+  const viewport = page.getViewport({ scale: renderScale });
+  // fit to window while preserving aspect ratio
+  const maxWidth = window.innerWidth;
+  const maxHeight = window.innerHeight;
+  const scale = Math.min(maxWidth / viewport.width, maxHeight / viewport.height, 1.8);
+  const view = page.getViewport({ scale: scale });
+
+  canvas.width = Math.floor(view.width);
+  canvas.height = Math.floor(view.height);
+
+  // render to canvas
+  const renderContext = {
+    canvasContext: ctx,
+    viewport: view,
+    renderInteractiveForms: false
+  };
+
+  // clear
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+
+  await page.render(renderContext).promise;
+
+  // small post-render effect: add subtle noise overlay to make OCR slightly harder (pure CSS)
+  // (This is cosmetic only and easy to remove by determined attackers)
+  renderInProgress = false;
+}
+
+// Navigation: left/right arrow or swipe
+function goToNext() {
+  if (!pdfDoc) return;
+  if (currentPage < pdfDoc.numPages) {
+    currentPage++;
+    renderPage(currentPage);
+    refreshWatermark();
+  }
+}
+function goToPrev() {
+  if (!pdfDoc) return;
+  if (currentPage > 1) {
+    currentPage--;
+    renderPage(currentPage);
+    refreshWatermark();
+  }
+}
+
+// Refresh watermark text and position to include timestamp
+function refreshWatermark() {
+  const ts = new Date().toLocaleString();
+  const wm = `${WATERMARK_TEXT} — ${ts}`;
+  createWatermark(wm);
+}
+
+// full screen on load
+async function goFullscreen() {
+  try {
+    if (document.fullscreenEnabled) {
+      await document.documentElement.requestFullscreen({ navigationUI: "hide" });
+    }
+  } catch (e) {
+    // ignore
+  }
+}
+
+// Attempt to detect PrintScreen & blur briefly (very unreliable across browsers/OS)
+// This is more of a deterrent; PrintScreen often isn't catchable by browsers.
+function attachPrintscreenDetector() {
+  window.addEventListener('keyup', (e) => {
+    // 44 is PrintScreen on many keyboards — may not fire
+    if (e.key === 'PrintScreen' || e.keyCode === 44) {
+      flashBlur();
+    }
+  });
+  // Listen for visibility change (user switched away e.g. took screenshot via other software)
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+      // user switched away — briefly blur when they return
+    } else {
+      flashBlur();
+    }
+  });
+}
+
+function flashBlur() {
+  const b = document.getElementById('blurLayer');
+  b.style.transition = 'background 0.25s';
+  b.style.background = 'rgba(0,0,0,0.15)';
+  setTimeout(()=> b.style.background = 'transparent', 400);
+}
+
+// Block common keys, right-click, selection, printing, view-source, devtools shortcuts
+function attachHardening() {
+  // context menu
+  window.addEventListener('contextmenu', e => e.preventDefault());
+
+  // block key combos
+  window.addEventListener('keydown', (e) => {
+    // list of forbidden key combos
+    if (e.ctrlKey || e.metaKey) {
+      const forbidden = ['s','p','u','S','U'];
+      if (forbidden.includes(e.key) || e.keyCode === 83 || e.keyCode === 80 || e.keyCode === 85) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    }
+    // F12, Ctrl+Shift+I, Ctrl+Shift+C, Ctrl+Shift+J
+    if (e.key === 'F12' || (e.ctrlKey && e.shiftKey && ['I','C','J'].includes(e.key.toUpperCase()))) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    // block PrintScreen (best effort)
+    if (e.key === 'PrintScreen' || e.keyCode === 44) {
+      e.preventDefault();
+      e.stopPropagation();
+      flashBlur();
+    }
+
+    // Arrow keys - navigation but no visible controls
+    if (e.key === 'ArrowRight' || e.keyCode === 39) { goToNext(); e.preventDefault(); }
+    if (e.key === 'ArrowLeft' || e.keyCode === 37) { goToPrev(); e.preventDefault(); }
+    if (e.key === 'Escape') {
+      // optionally exit fullscreen
+      if (document.fullscreenElement) document.exitFullscreen().catch(()=>{});
+    }
+  }, {capture:true});
+
+  // disable selection & dragging
+  ['selectstart','dragstart','copy','cut','paste'].forEach(evt => {
+    window.addEventListener(evt, e => e.preventDefault(), {capture:true});
+  });
+
+  // Disable devtools open by resizing check (not reliable, but deters casual users)
+  let lastOuter = {w:window.outerWidth, h:window.outerHeight};
+  setInterval(() => {
+    if (window.outerWidth < lastOuter.w - 160 || window.outerHeight < lastOuter.h - 160) {
+      // possible devtools opened — blur view briefly
+      flashBlur();
+    }
+    lastOuter = {w:window.outerWidth, h:window.outerHeight};
+  }, 1000);
+}
+
+// Minimal touch/swipe support for mobile devices (no visible UI)
+function attachTouchNavigation() {
+  let startX = 0;
+  pageContainer.addEventListener('touchstart', (ev) => {
+    if (ev.touches && ev.touches[0]) startX = ev.touches[0].clientX;
+  }, {passive:true});
+  pageContainer.addEventListener('touchend', (ev) => {
+    if (!ev.changedTouches || !ev.changedTouches[0]) return;
+    const dx = ev.changedTouches[0].clientX - startX;
+    if (dx < -50) goToNext();
+    if (dx > 50) goToPrev();
+  }, {passive:true});
+}
+
+// init
+(async function init() {
+  // request fullscreen to reduce browser chrome
+  try { await goFullscreen(); } catch (e){}
+
+  refreshWatermark();
+  attachHardening();
+  attachPrintscreenDetector();
+  attachTouchNavigation();
+  // load the pdf
+  await loadPdf(PDF_URL);
+
+  // periodically refresh watermark (so shared screenshots include fresh timestamp)
+  setInterval(refreshWatermark, 30_000); // every 30s
+
+  // focus keyboard intercepts
+  document.getElementById('viewer').focus();
+})();
+</script>
+</body>
+</html>

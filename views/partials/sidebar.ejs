@@ -1,0 +1,15 @@
+<div class="bg-white rounded shadow-sm p-4 mb-4">
+  <h5 class="mb-3 font-weight-bold">Quick Links</h5>
+  <ul class="nav flex-column">
+    <li class="nav-item mb-2"><a class="nav-link p-0 text-dark" href="/">Home</a></li>
+    <li class="nav-item mb-2"><a class="nav-link p-0 text-dark" href="/dashboard">Dashboard</a></li>
+    <li class="nav-item mb-2"><a class="nav-link p-0 text-dark" href="/search">Search</a></li>
+    <li class="nav-item mb-2"><a class="nav-link p-0 text-dark" href="/contact">Contact</a></li>
+    <% if (currentUser) { %>
+      <li class="nav-item mb-2"><a class="nav-link p-0 text-dark" href="/logout">Logout</a></li>
+    <% } else { %>
+      <li class="nav-item mb-2"><a class="nav-link p-0 text-dark" href="/login">Login</a></li>
+      <li class="nav-item mb-2"><a class="nav-link p-0 text-dark" href="/signup">Sign Up</a></li>
+    <% } %>
+  </ul>
+</div>

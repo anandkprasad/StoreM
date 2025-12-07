@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title><%= product.name %> · EBookStore</title>
+  <meta content="width=device-width, initial-scale=1.0" name="viewport">
+  <meta content="Curated ebooks" name="description">
+  <link href="/img/favicon.ico" rel="icon">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
+  <link href="/lib/owlcarousel/assets/owl.carousel.min.css" rel="stylesheet">
+  <link href="/css/style.css" rel="stylesheet">
+
+  <style>
+    :root{
+      --primary:#007bff;
+      --muted:#6c757d;
+      --card-radius:16px;
+      --shadow-soft: 0 8px 30px rgba(21,30,60,0.08);
+    }
+    body{font-family:'Poppins', system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;}
+    .brand-badge{background:linear-gradient(135deg,var(--primary),#2aa0ff);border-radius:8px;padding:6px 10px;color:#fff;font-weight:700}
+    .topbar{background:linear-gradient(90deg, rgba(0,123,255,0.04), rgba(0,123,255,0.01));}
+    input.form-control{border-radius:50px}
+    .btn-pill{border-radius:50px}
+    .back-to-top{position:fixed;right:20px;bottom:20px;border-radius:50%;width:46px;height:46px;display:flex;align-items:center;justify-content:center;z-index:1000}
+    /* Product detail */
+    .product-gallery { background: linear-gradient(180deg,#fff,#fbfdff); border-radius:16px; box-shadow:var(--shadow-soft); padding:18px; }
+    .product-gallery img { width:100%; height:100%; object-fit:contain; border-radius:12px; }
+    .price { font-size:1.9rem; font-weight:800; color:#0b3a66; }
+    .buy-cta { font-weight:700; padding:12px 18px; border-radius:12px; }
+    .specs { background:#f8f9fb; padding:12px; border-radius:10px; }
+    .product-badges .badge { margin-right:8px; border-radius:10px; padding:8px 10px; font-weight:700; }
+    /* Recommended cards (consistent with index) */
+    .rec-card { border-radius:14px; overflow:hidden; transition:transform .18s ease, box-shadow .18s ease; box-shadow:0 6px 20px rgba(10,20,40,0.04); }
+    .rec-card:hover { transform:translateY(-6px); box-shadow:0 22px 48px rgba(10,20,40,0.08); }
+    .rec-img { height:220px; display:flex; align-items:center; justify-content:center; background:linear-gradient(180deg,#fff,#fbfdff); }
+    .rec-img img { width:100%; height:100%; object-fit:cover; border-radius:12px; }
+    @media (max-width:991px){
+      .rec-img { height:260px; }
+    }
+    /* small utility */
+    .muted { color:var(--muted); }
+  </style>
+</head>
+<body>
+  <!-- Topbar -->
+  <div class="container-fluid topbar py-3">
+    <div class="row align-items-center px-xl-5">
+      <div class="col-lg-3 col-8 d-flex align-items-center">
+        <a href="/" class="text-decoration-none d-flex align-items-center">
+          <span class="brand-badge mr-3">E</span>
+          <div>
+            <h1 class="m-0 h5 font-weight-bold">EBookStore</h1>
+            <small class="text-muted">Curated ebooks · instant access</small>
+          </div>
+        </a>
+      </div>
+
+      <div class="col-lg-6 col-12 mt-2 mt-lg-0">
+        <form class="d-flex" action="/search" method="GET" role="search" aria-label="Search form">
+          <div class="input-group w-100">
+            <input type="search" name="q" class="form-control" placeholder="Search for products, authors, ISBN..." aria-label="Search" value="<%= typeof query !== 'undefined' ? query : '' %>">
+            <div class="input-group-append">
+              <button class="btn btn-primary btn-pill" type="submit" aria-label="Search"><i class="fas fa-search"></i></button>
+            </div>
+          </div>
+        </form>
+      </div>
+
+      <div class="col-lg-3 col-12 text-right mt-2 mt-lg-0 d-flex justify-content-end align-items-center">
+        <div class="d-none d-lg-block">
+          <% if (currentUser) { %>
+            <a href="/dashboard" class="btn btn-outline-primary btn-pill mr-2">Hi, <%= currentUser.username %></a>
+            <a href="/logout" class="btn btn-primary btn-pill">Logout</a>
+          <% } else { %>
+            <a href="/login" class="btn btn-outline-primary btn-pill mr-2">Login</a>
+            <a href="/signup" class="btn btn-primary btn-pill">Register</a>
+          <% } %>
+        </div>
+
+        <div class="d-lg-none ml-2">
+          <button class="btn btn-outline-secondary" type="button" data-toggle="collapse" data-target="#navbarCollapse" aria-controls="navbarCollapse" aria-expanded="false" aria-label="Toggle menu">
+            <i class="fas fa-user"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main layout -->
+  <div class="container-fluid mb-5">
+    <div class="row px-xl-5">
+      <!-- Sidebar (left on desktop) -->
+      <div class="col-lg-3 d-none d-lg-block">
+        <a class="btn shadow-none d-flex align-items-center justify-content-between bg-primary text-white w-100"
+           data-toggle="collapse" href="#navbar-vertical"
+           style="height: 65px; margin-top: -1px; padding: 0 30px;">
+          <h6 class="m-0">Ebook Categories <i class="fa fa-angle-down text-dark"></i></h6>
+        </a>
+
+        <nav class="collapse show navbar navbar-vertical navbar-light align-items-start p-0 border border-top-0 border-bottom-0" id="navbar-vertical" style="height:420px; overflow:auto;">
+          <div class="navbar-nav w-100">
+            <a href="/" class="nav-item nav-link active">Home</a>
+            <% if (currentUser) { %>
+              <a href="/dashboard" class="nav-item nav-link">Welcome <%= currentUser.username %>!</a>
+              <a href="/logout" class="nav-item nav-link">Logout</a>
+            <% } else { %>
+              <a href="/login" class="nav-item nav-link">Login</a>
+              <a href="/signup" class="nav-item nav-link">Register</a>
+            <% } %>
+            <a href="/contact" class="nav-item nav-link">Contact Us</a>
+          </div>
+        </nav>
+      </div>
+
+      <!-- Product content -->
+      <div class="col-lg-9">
+        <nav class="navbar navbar-expand-lg bg-light navbar-light py-3 py-lg-0 px-0 mb-3">
+          <a href="/" class="text-decoration-none d-block d-lg-none">
+            <h1 class="m-0 h4 font-weight-bold"><span class="text-primary">E</span>BookStore</h1>
+          </a>
+          <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarCollapse" aria-controls="navbarCollapse" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+          </button>
+
+          <div class="collapse navbar-collapse" id="navbarCollapse">
+            <div class="navbar-nav mr-auto py-0">
+              <a href="/" class="nav-item nav-link active">Home</a>
+              <a href="/about" class="nav-item nav-link">About</a>
+            </div>
+            <div class="navbar-nav ml-auto">
+              <% if (currentUser) { %>
+                <a href="/dashboard" class="nav-item nav-link d-lg-none">Hi, <%= currentUser.username %></a>
+                <a href="/logout" class="nav-item nav-link d-lg-none">Logout</a>
+              <% } else { %>
+                <a href="/login" class="nav-item nav-link d-lg-none">Login</a>
+                <a href="/signup" class="nav-item nav-link d-lg-none">Register</a>
+              <% } %>
+            </div>
+          </div>
+        </nav>
+
+        <!-- Product detail -->
+        <div class="container-fluid py-3">
+          <div class="row">
+            <div class="col-md-6 mb-4">
+              <div class="product-gallery">
+                <div style="width:100%; height:420px; display:flex; align-items:center; justify-content:center;">
+                  <img loading="lazy" src="<%= product.image_url || product.imageUrl || '/img/product-1.jpg' %>" alt="<%= product.name %>">
+                </div>
+                <!-- small thumbnails (optional) -->
+                <% if (product.images && product.images.length > 1) { %>
+                  <div class="d-flex mt-3 gap-2">
+                    <% product.images.forEach(function(img){ %>
+                      <div style="width:64px; height:64px; border-radius:8px; overflow:hidden; box-shadow:0 6px 18px rgba(10,20,40,0.04); cursor:pointer;">
+                        <img loading="lazy" src="<%= img %>" style="width:100%; height:100%; object-fit:cover;" alt="">
+                      </div>
+                    <% }); %>
+                  </div>
+                <% } %>
+              </div>
+            </div>
+
+            <div class="col-md-6">
+              <h2 class="mb-2" style="font-weight:800;"><%= product.name %></h2>
+
+              <div class="product-badges mb-3">
+                <% if (product.isNew) { %><span class="badge badge-pill badge-primary">NEW</span><% } %>
+                <% if (product.isPrime) { %><span class="badge badge-pill badge-dark">PRIME</span><% } %>
+                <% if (product.category) { %><span class="badge badge-pill badge-light text-dark"><%= product.category %></span><% } %>
+              </div>
+
+              <div class="mb-3">
+                <div class="price">₹ <%= product.price %></div>
+                <% if (product.original_price && product.original_price > product.price) { %>
+                  <div class="muted" style="text-decoration:line-through;">₹ <%= product.original_price %></div>
+                <% } %>
+              </div>
+
+              <p class="mb-3 muted" style="line-height:1.55;"><%= product.short_description || product.description || '' %></p>
+
+              <div class="row mb-3">
+                <div class="col-6">
+                  <div class="specs">
+                    <small class="muted">Format</small>
+                    <div><strong><%= product.format || 'ePub / PDF' %></strong></div>
+                  </div>
+                </div>
+                
+              </div>
+
+              <div class="d-flex align-items-center mb-4">
+                <a href="/buy/<%= product._id %>" class="btn btn-success buy-cta mr-3" role="button" aria-label="Buy <%= product.name %> now">
+                  <i class="fa fa-bolt mr-1"></i> Buy Now
+                </a>
+
+              
+               
+              </div>
+
+              <hr>
+
+              <div>
+                <h6 style="font-weight:700;">Product details</h6>
+                <p class="muted" style="line-height:1.6;"><%= product.descriptionLong || product.description || 'No extra details provided.' %></p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Recommended -->
+        <% if (recommended && recommended.length > 0) { %>
+          <div class="container-fluid py-4">
+            <div class="text-center mb-4">
+              <h3 class="section-title px-5"><span class="px-2">You May Also Like</span></h3>
+            </div>
+
+            <div class="row px-xl-5 pb-3">
+              <% recommended.forEach(function(item) { %>
+                <div class="col-lg-4 col-md-6 col-sm-12 mb-4 d-flex align-items-stretch">
+                  <div class="rec-card w-100 d-flex flex-column">
+                    <div class="rec-img">
+                      <img loading="lazy" src="<%= item.image_url || item.imageUrl || '/img/product-1.jpg' %>" alt="<%= item.name %>">
+                    </div>
+                    <div class="p-3 d-flex flex-column flex-grow-1">
+                      <a href="/product/<%= item._id %>" style="text-decoration:none;color:inherit;">
+                        <h5 style="font-size:1.05rem; font-weight:700; margin-bottom:8px;"><%= item.name %></h5>
+                      </a>
+                      <% if (item.author) { %>
+                        <div class="muted mb-2">by <strong><%= item.author %></strong></div>
+                      <% } %>
+
+                      <p class="muted mb-3" style="flex:1;">
+                        <% let words = (item.description || '').split(/\s+/); %>
+                        <%= words.slice(0, 20).join(' ') %><%= words.length > 20 ? '...' : '' %>
+                      </p>
+
+                      <div class="d-flex align-items-center">
+                        <div style="font-weight:800;">₹ <%= item.price %></div>
+                        <div class="ml-auto">
+                          <form action="/cart/add/<%= item._id %>" method="POST" style="display:inline;">
+                            <button class="btn btn-primary btn-sm rounded-pill">Buy Now</button>
+                          </form>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              <% }); %>
+            </div>
+          </div>
+        <% } %>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="container-fluid bg-secondary text-dark mt-5 pt-5">
+    <div class="row px-xl-5 pt-5">
+      <div class="col-lg-4 col-md-12 mb-5 pr-3 pr-xl-5">
+        <a href="/" class="text-decoration-none d-flex align-items-center">
+          <span class="brand-badge mr-3">E</span>
+          <h3 class="m-0">EBookStore</h3>
+        </a>
+        <p class="mt-3 text-muted">Curated ebooks for enthusiasts, students and professionals. High-quality content delivered instantly.</p>
+        <p class="mb-2 text-muted"><i class="fa fa-map-marker-alt text-primary mr-2"></i>123 Street, New York, USA</p>
+        <p class="mb-2 text-muted"><i class="fa fa-envelope text-primary mr-2"></i>info@example.com</p>
+        <p class="mb-0 text-muted"><i class="fa fa-phone-alt text-primary mr-2"></i>+012 345 67890</p>
+      </div>
+
+      <div class="col-lg-8 col-md-12">
+        <div class="row">
+          <div class="col-md-4 mb-5">
+            <h5 class="font-weight-bold text-dark mb-4">Quick Links</h5>
+            <div class="d-flex flex-column justify-content-start">
+              <a class="text-dark mb-2" href="/">Home</a>
+              <a class="text-dark mb-2" href="/shop">Our Shop</a>
+              <a class="text-dark mb-2" href="/detail">Shop Detail</a>
+              <a class="text-dark mb-2" href="/cart">Shopping Cart</a>
+              <a class="text-dark mb-2" href="/checkout">Checkout</a>
+              <a class="text-dark" href="/contact">Contact Us</a>
+            </div>
+          </div>
+
+          <div class="col-md-4 mb-5">
+            <h5 class="font-weight-bold text-dark mb-4">Resources</h5>
+            <div class="d-flex flex-column justify-content-start">
+              <a class="text-dark mb-2" href="#">Blog</a>
+              <a class="text-dark mb-2" href="#">Guides</a>
+              <a class="text-dark mb-2" href="#">Privacy</a>
+              <a class="text-dark mb-2" href="#">Terms</a>
+            </div>
+          </div>
+
+          <div class="col-md-4 mb-5">
+            <h5 class="font-weight-bold text-dark mb-4">Newsletter</h5>
+            <form action="">
+              <div class="form-group">
+                <input type="text" class="form-control border-0 py-3" placeholder="Your Name" required />
+              </div>
+              <div class="form-group">
+                <input type="email" class="form-control border-0 py-3" placeholder="Your Email" required />
+              </div>
+              <div>
+                <button class="btn btn-primary btn-block border-0 py-3 btn-pill" type="submit">Subscribe Now</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row border-top border-light mx-xl-5 py-4">
+      <div class="col-md-6 px-xl-0">
+        <p class="mb-md-0 text-center text-md-left text-dark small">
+          &copy; <a class="text-dark font-weight-semi-bold" href="#">EBookStore</a>. All Rights Reserved.
+        </p>
+      </div>
+      <div class="col-md-6 px-xl-0 text-center text-md-right">
+        <img class="img-fluid" src="/img/payments.png" alt="payments">
+      </div>
+    </div>
+  </div>
+
+  <!-- Back to Top -->
+  <a href="#" class="btn btn-primary back-to-top" aria-label="Back to top"><i class="fa fa-angle-double-up"></i></a>
+
+  <!-- JS -->
+  <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
+  <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/js/bootstrap.bundle.min.js"></script>
+  <script src="/lib/easing/easing.min.js"></script>
+  <script src="/lib/owlcarousel/owl.carousel.min.js"></script>
+  <script src="/js/main.js"></script>
+
+  <script>
+    // back to top
+    $(function(){
+      $(window).scroll(function(){
+        if($(this).scrollTop()>200) $('.back-to-top').fadeIn(); else $('.back-to-top').fadeOut();
+      });
+      $('.back-to-top').click(function(e){e.preventDefault();$('html,body').animate({scrollTop:0},400)});
+    });
+  </script>
+</body>
+</html>

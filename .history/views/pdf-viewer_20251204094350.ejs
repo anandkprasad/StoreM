@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>HTML-only Secure PDF Viewer (tries client-side options)</title>
+
+<!-- PDF.js (load first) -->
+<script src="https://unpkg.com/pdfjs-dist@3.11.172/build/pdf.min.js"></script>
+<style>
+  :root { --bg:#0b0b0c; --panel:rgba(0,0,0,0.6); --accent:#e6e6e6; }
+  html,body{height:100%;margin:0;background:var(--bg);color:var(--accent);font-family:Inter,system-ui,Segoe UI,Roboto,Arial;}
+  #viewer{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:var(--bg);}
+  .pageContainer{position:relative;width:100vw;height:100vh;display:flex;align-items:center;justify-content:center;overflow:hidden;}
+  canvas.pdfPage{max-width:100%;max-height:100%;background:#fff;pointer-events:none; image-rendering:optimizeQuality;}
+  #watermark{position:absolute;inset:0;pointer-events:none;z-index:50;}
+  .wmText{position:absolute;transform:rotate(-30deg);opacity:0.08;white-space:nowrap;user-select:none;font-size:18px;font-family:inherit;}
+  #message{position:absolute;z-index:200;top:12px;left:12px;right:12px;text-align:left;color:var(--accent);font-size:14px;}
+  #errBox{position:absolute;bottom:12px;left:12px;right:12px;background:var(--panel);padding:10px;border-radius:6px;color:#fbc;display:none;z-index:210;}
+  #iframeFallback{position:absolute;inset:0;border:0;display:none;z-index:10;}
+  /* defensive UX: block selection & context menu */
+  body,html{ -webkit-user-select:none; -moz-user-select:none; user-select:none; }
+</style>
+</head>
+<body>
+<div id="viewer" tabindex="0">
+  <div class="pageContainer" id="pageContainer">
+    <canvas id="pdfCanvas" class="pdfPage" aria-hidden="false"></canvas>
+    <iframe id="iframeFallback" sandbox="allow-same-origin allow-forms allow-scripts"></iframe>
+    <div id="watermark" aria-hidden="true"></div>
+    <div id="message">Loading PDF… (will fall back to an embedded viewer if CORS blocks)</div>
+    <div id="errBox"></div>
+  </div>
+</div>
+
+<script>
+/* ---------- CONFIG (edit these) ---------- */
+// Remote PDF you want to view (your Dropbox link)
+const ORIGINAL_PDF_URL = "https://www.dropbox.com/scl/fi/fraizb3xwx6jcmd9307xq/693101df095ae9fd19fea697.pdf?rlkey=38p2ukkfqlrfcwfiv7itk4vob&raw=1";
+
+// WATERMARK TEXT (set per-customer when generating the HTML)
+const WATERMARK_BASE = "Purchased by: user@example.com — order #12345";
+
+/* ---------- end config ---------- */
+
+// PDF.js worker
+if (typeof pdfjsLib === 'undefined') {
+  document.getElementById('message').textContent = "PDF.js library failed to load. Check network.";
+  throw new Error('pdfjsLib not loaded');
+}
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://unpkg.com/pdfjs-dist@3.11.172/build/pdf.worker.min.js';
+
+const canvas = document.getElementById('pdfCanvas');
+const ctx = canvas.getContext('2d');
+const message = document.getElementById('message');
+const errBox = document.getElementById('errBox');
+const watermark = document.getElementById('watermark');
+const iframe = document.getElementById('iframeFallback');
+
+let pdfDoc = null;
+let pageNum = 1;
+
+/* watermark */
+function createWatermark(text) {
+  watermark.innerHTML = '';
+  const w = window.innerWidth, h = window.innerHeight;
+  const cols = Math.ceil(w/350)+2, rows = Math.ceil(h/200)+2;
+  for (let r=0; r<rows; r++){
+    for (let c=0; c<cols; c++){
+      const d = document.createElement('div');
+      d.className = 'wmText';
+      d.style.left = (c*300) + 'px';
+      d.style.top = (r*170) + 'px';
+      d.textContent = text;
+      watermark.appendChild(d);
+    }
+  }
+}
+
+/* show error */
+function showError(msg, details) {
+  console.error(msg, details);
+  errBox.style.display = 'block';
+  errBox.textContent = typeof msg === 'string' ? msg : JSON.stringify(msg);
+  message.textContent = "Viewer encountered a problem — see the message below.";
+}
+
+/* render a page to canvas */
+async function renderPage(pn, preferredScale=1.4) {
+  try {
+    const page = await pdfDoc.getPage(pn);
+    const vp = page.getViewport({ scale: preferredScale });
+    const maxW = window.innerWidth, maxH = window.innerHeight;
+    const fitScale = Math.min(maxW / vp.width, maxH / vp.height, preferredScale);
+    const view = page.getViewport({ scale: fitScale });
+    canvas.width = Math.floor(view.width);
+    canvas.height = Math.floor(view.height);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+    await page.render({ canvasContext: ctx, viewport: view }).promise;
+    message.style.display = 'none';
+  } catch (e) {
+    showError('Render error', e);
+  }
+}
+
+/* attempt 1: fetch as arrayBuffer then PDF.js */
+async function tryFetchAndRender(url) {
+  try {
+    const resp = await fetch(url, { method:'GET', mode:'cors', cache:'no-store' });
+    if (!resp.ok) throw new Error('Network response not OK: ' + resp.status);
+    const ab = await resp.arrayBuffer();
+    pdfDoc = await pdfjsLib.getDocument({ data: ab }).promise;
+    createWatermark(WATERMARK_BASE + ' — ' + new Date().toLocaleString());
+    await renderPage(pageNum);
+    return true;
+  } catch (err) {
+    console.warn('fetch->arrayBuffer failed:', err);
+    return false;
+  }
+}
+
+/* attempt 2: PDF.js load from URL directly (works only if host sets CORS) */
+async function tryPdfJsUrl(url) {
+  try {
+    pdfDoc = await pdfjsLib.getDocument(url).promise;
+    createWatermark(WATERMARK_BASE + ' — ' + new Date().toLocaleString());
+    await renderPage(pageNum);
+    return true;
+  } catch (err) {
+    console.warn('pdfjs getDocument(url) failed:', err);
+    return false;
+  }
+}
+
+/* final fallback: embed via iframe (not canvas; less secure, native UI may show) */
+function fallbackToIframe(url) {
+  try {
+    iframe.src = url;
+    iframe.style.display = 'block';
+    // try to request fullscreen for iframe
+    try { document.documentElement.requestFullscreen?.(); } catch(e){}
+    message.textContent = "Using embedded viewer fallback. This shows the raw PDF frame — not canvas-rendered.";
+    showError('CORS prevented canvas rendering. Embed fallback in use. To use canvas rendering, host the PDF on a server with CORS enabled (see instructions below).');
+  } catch (e) {
+    showError('Iframe fallback failed', e);
+  }
+}
+
+/* navigation keys */
+window.addEventListener('keydown', (e) => {
+  if (!pdfDoc) return;
+  if (e.key === 'ArrowRight') { if (pageNum < pdfDoc.numPages) { pageNum++; renderPage(pageNum); } e.preventDefault(); }
+  if (e.key === 'ArrowLeft') { if (pageNum > 1) { pageNum--; renderPage(pageNum); } e.preventDefault(); }
+});
+
+/* hardening: block right click / common keys (best-effort only) */
+window.addEventListener('contextmenu', e => e.preventDefault());
+window.addEventListener('keydown', (e)=> {
+  if ((e.ctrlKey || e.metaKey) && ['s','p','u','S','U'].includes(e.key)) { e.preventDefault(); }
+  if (e.key === 'F12') e.preventDefault();
+}, {capture:true});
+
+/* init flow */
+(async function init() {
+  message.textContent = "Trying secure canvas rendering (fetch → PDF.js). If this fails due to CORS, will try fallback.";
+  // 1) try fetch+arrayBuffer
+  const ok1 = await tryFetchAndRender(ORIGINAL_PDF_URL);
+  if (ok1) return;
+
+  // 2) try letting PDF.js fetch the URL (works with permissive hosting)
+  message.textContent = "fetch method failed — trying PDF.js direct URL load (requires CORS on hosting).";
+  const ok2 = await tryPdfJsUrl(ORIGINAL_PDF_URL);
+  if (ok2) return;
+
+  // 3) fallback: embed iframe (not secure)
+  fallbackToIframe(ORIGINAL_PDF_URL);
+
+  // show user actionable instructions (short)
+  const hint = `
+To use the secure canvas viewer (PDF.js) without a proxy you must host the PDF where the server returns
+Access-Control-Allow-Origin: *  (or your site origin). Options:
+1) Upload the PDF to a public GitHub repo and use jsDelivr CDN (see instructions below).
+2) Use Netlify / Vercel or another static host and enable CORS.
+3) Use S3 + CloudFront and configure CORS rule for the bucket.
+See README below the viewer for exact steps.
+`;
+  console.info(hint);
+})();
+
+/* --- optional: update watermark periodically --- */
+setInterval(()=> {
+  if (pdfDoc) createWatermark(WATERMARK_BASE + ' — ' + new Date().toLocaleString());
+}, 30000);
+</script>
+
+<!-- Plain HTML instructions for how to host so the canvas-renderer works (visible in console) -->
+<!-- Below are quick HTML-only hosting options; not required in file but kept for reference. -->
+</body>
+</html>

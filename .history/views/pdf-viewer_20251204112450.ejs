@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Secure Flipbook — StoreM</title>
+
+<script>
+  // server will inject these values when rendering
+  const ORDER_ID = "<%= orderId %>";
+  const VIEW_TOKEN = "<%= (typeof token !== 'undefined' ? token : '') %>"; // optional token rendered by your route
+  const WATERMARK_BASE = "Purchased by: <%= (user && user.email) ? user.email : 'Guest' %>";
+</script>
+
+<style>
+  :root { --bg:#000; --wm-opacity:0.08; }
+  html,body{height:100%;margin:0;background:var(--bg);font-family:Inter,system-ui,Segoe UI,Roboto,Arial;color:#fff}
+  #app{position:fixed;inset:0;display:flex;align-items:stretch;justify-content:center;background:#000}
+  #frameWrap{position:relative;flex:1;overflow:hidden;background:#000}
+  /* image viewer replaces iframe */
+  #imageViewer { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; }
+  #imageViewer img { max-width:100%; max-height:100%; display:block; box-shadow: 0 6px 24px rgba(0,0,0,0.6); user-select: none; -webkit-user-drag: none; }
+  /* opaque toolbar mask (covers toolbar area) */
+  #toolbarMask{position:absolute;top:0;right:0;z-index:60;background:rgba(0,0,0,0.98);pointer-events:auto;
+    width:var(--maskWpx);height:var(--maskHpx);border-bottom-left-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,0.75);}
+  /* watermark overlay */
+  #watermark{position:absolute;inset:0;z-index:70;pointer-events:none;overflow:hidden}
+  .wmText{position:absolute;transform:rotate(-30deg);opacity:var(--wm-opacity);white-space:nowrap;user-select:none;font-size:18px;color:#fff}
+  /* controls */
+  #controls{position:absolute;left:12px;top:12px;z-index:80;display:flex;gap:8px;align-items:center}
+  button.ctrl{background:rgba(0,0,0,0.6);color:#fff;border:1px solid rgba(255,255,255,0.06);padding:8px 10px;border-radius:6px;cursor:pointer;font-size:13px}
+  #status{position:absolute;left:12px;bottom:12px;z-index:80;color:#ddd;background:rgba(0,0,0,0.4);padding:6px 8px;border-radius:6px;font-size:13px}
+  ::-webkit-scrollbar{width:0;height:0}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="frameWrap">
+    <div id="imageViewer">
+      <img id="pageImg" src="" alt="page image" />
+    </div>
+
+    <!-- toolbar mask covers buttons and blocks clicks on that small area -->
+    <div id="toolbarMask" title="Protected content — toolbar hidden"></div>
+
+    <!-- watermark overlay -->
+    <div id="watermark" aria-hidden="true"></div>
+
+    <div id="controls">
+      <button id="prevBtn" class="ctrl">Prev</button>
+      <button id="nextBtn" class="ctrl">Next</button>
+      <button id="fullscreenBtn" class="ctrl">Toggle Fullscreen</button>
+    </div>
+
+    <div id="status"></div>
+  </div>
+</div>
+
+<script>
+  // safe server → client page value (works even if currentPage isn't provided)
+  const SERVER_CURRENT_PAGE = "<%= (typeof currentPage !== 'undefined' ? currentPage : 1) %>";
+  const curPage = Number(SERVER_CURRENT_PAGE) || 1;
+
+
+/* ---------- helper UI & watermark ---------- */
+const pageImg = document.getElementById('pageImg');
+const toolbarMask = document.getElementById('toolbarMask');
+const watermark = document.getElementById('watermark');
+const prevBtn = document.getElementById('prevBtn');
+const nextBtn = document.getElementById('nextBtn');
+const fullscreenBtn = document.getElementById('fullscreenBtn');
+const status = document.getElementById('status');
+
+function adjustMask(){
+  const w = Math.max(220, Math.floor(window.innerWidth * 0.22));
+  const h = Math.max(80, Math.floor(window.innerHeight * 0.08));
+  toolbarMask.style.width = w + 'px';
+  toolbarMask.style.height = h + 'px';
+  document.documentElement.style.setProperty('--maskWpx', w + 'px');
+  document.documentElement.style.setProperty('--maskHpx', h + 'px');
+}
+window.addEventListener('resize', adjustMask);
+adjustMask();
+
+function buildWatermark(text){
+  watermark.innerHTML = '';
+  const w = window.innerWidth, h = window.innerHeight;
+  const stepX = Math.max(260, Math.floor(w/5));
+  const stepY = Math.max(150, Math.floor(h/6));
+  for (let y = -stepY; y < h + stepY; y += stepY){
+    for (let x = -stepX; x < w + stepX; x += stepX){
+      const d = document.createElement('div');
+      d.className = 'wmText';
+      d.style.left = x + 'px';
+      d.style.top = y + 'px';
+      d.style.fontSize = Math.max(12, Math.floor(Math.min(w,h)/50)) + 'px';
+      d.textContent = `${WATERMARK_BASE} — ${new Date().toLocaleString()}`;
+      watermark.appendChild(d);
+    }
+  }
+}
+buildWatermark();
+setInterval(buildWatermark, 30000);
+
+/* prevent easy copy/print shortcuts */
+document.addEventListener('contextmenu', e => e.preventDefault(), {capture:true});
+window.addEventListener('keydown', (e) => {
+  if ((e.ctrlKey || e.metaKey) && ['s','p','u','S','U'].includes(e.key)) { e.preventDefault(); e.stopPropagation(); flashWatermark(); }
+  if (e.key === 'F12' || (e.ctrlKey && e.shiftKey && ['I','C','J'].includes(e.key.toUpperCase()))) { e.preventDefault(); e.stopPropagation(); flashWatermark(); }
+}, {capture:true});
+function flashWatermark(){ watermark.style.transition = 'opacity .12s'; watermark.style.opacity = '0.35'; setTimeout(()=> watermark.style.opacity = '1', 200); }
+
+/* fullscreen */
+fullscreenBtn.addEventListener('click', async () => {
+  try {
+    if (!document.fullscreenElement) await document.documentElement.requestFullscreen({ navigationUI: "hide" });
+    else await document.exitFullscreen();
+  } catch (e) { console.warn('Fullscreen failed', e); }
+});
+
+/* keyboard */
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowLeft') prevPage();
+  if (e.key === 'ArrowRight') nextPage();
+});
+
+/* ---------- page loading logic ---------- */
+
+let lastGood = 0;
+
+async function fetchPageUrl(page) {
+  // attach token if present as server-rendered var or query param
+  const tokenParam = VIEW_TOKEN ? `?token=${encodeURIComponent(VIEW_TOKEN)}` : (location.search ? location.search : '');
+  const q = tokenParam ? tokenParam : '';
+  try {
+    const resp = await fetch(`/notes/${ORDER_ID}/page/${page}/image${q}`);
+    if (!resp.ok) {
+      return null;
+    }
+    const json = await resp.json();
+    return json.url;
+  } catch (err) {
+    console.error('fetch page error', err);
+    return null;
+  }
+}
+
+async function showPage(page) {
+  status.textContent = 'Loading...';
+  const url = await fetchPageUrl(page);
+  if (!url) {
+    status.textContent = 'Page not available';
+    return false;
+  }
+  pageImg.src = url;
+  status.textContent = `Page ${page}`;
+  lastGood = page;
+  return true;
+}
+
+async function prevPage() {
+  if (curPage <= 1) return;
+  curPage--;
+  await showPage(curPage);
+}
+async function nextPage() {
+  curPage++;
+  const ok = await showPage(curPage);
+  if (!ok) curPage = lastGood; // revert
+}
+
+prevBtn.addEventListener('click', prevPage);
+nextBtn.addEventListener('click', nextPage);
+
+/* initial load */
+showPage(curPage);
+
+/* focus handling for better keyboard */
+window.addEventListener('visibilitychange', ()=> { if (!document.hidden) flashWatermark(); });
+
+</script>
+</body>
+</html>

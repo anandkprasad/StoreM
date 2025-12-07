@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Contact Messages · Admin</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet"/>
+  <link href="/css/style.css" rel="stylesheet">
+  <style>
+    .table-contact { background: #fff; border-radius: 12px; box-shadow: 0 4px 18px rgba(10,20,40,0.06); }
+    .table-contact th, .table-contact td { vertical-align: middle; }
+    .table-contact th { background: #f8f9fb; font-weight: 600; }
+    .contact-message { max-width: 400px; white-space: pre-line; }
+  </style>
+</head>
+<body>
+  <nav class="navbar navbar-expand-lg navbar-light bg-light border-bottom mb-4">
+    <div class="container-fluid">
+      <a class="navbar-brand font-weight-bold" href="/admin">Admin Panel</a>
+      <div class="collapse navbar-collapse">
+        <ul class="navbar-nav ml-auto">
+          <li class="nav-item"><a class="nav-link" href="/admin">Dashboard</a></li>
+          <li class="nav-item"><a class="nav-link active" href="/admin/contacts">Contact Messages</a></li>
+          <li class="nav-item"><a class="nav-link" href="/logout">Logout</a></li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+  <div class="container py-4">
+    <h2 class="mb-4">Contact Messages</h2>
+    <div class="table-responsive">
+      <table class="table table-contact table-bordered">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Message</th>
+            <th>Date</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% if (messages.length === 0) { %>
+            <tr><td colspan="4" class="text-center text-muted">No contact messages yet.</td></tr>
+          <% } %>
+          <% messages.forEach(function(msg) { %>
+            <tr>
+              <td><%= msg.name %></td>
+              <td><a href="mailto:<%= msg.email %>"><%= msg.email %></a></td>
+              <td class="contact-message"><%= msg.message %></td>
+              <td><%= msg.createdAt.toLocaleString() %></td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</body>
+</html>

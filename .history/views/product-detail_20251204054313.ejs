@@ -1,0 +1,97 @@
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title><%= product.name %> - Product Detail</title>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport">
+    <link href="img/favicon.ico" rel="icon">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@100;200;300;400;500;600;700;800;900&display=swap" rel="stylesheet"> 
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.10.0/css/all.min.css" rel="stylesheet">
+    <link href="/lib/owlcarousel/assets/owl.carousel.min.css" rel="stylesheet">
+    <link href="/css/style.css" rel="stylesheet">
+</head>
+<body>
+       <!-- Navbar Start -->
+    <div class="container-fluid mb-5">
+        <div class="row border-top px-xl-5">
+            <div class="col-lg-3 d-none d-lg-block">
+                <a class="btn shadow-none d-flex align-items-center justify-content-between bg-primary text-white w-100" data-toggle="collapse" href="#navbar-vertical" style="height: 65px; margin-top: -1px; padding: 0 30px;">
+                    <h6 class="m-0">Ebook Store
+                    <i class="fa fa-angle-down text-dark"></i></h6>
+                </a>
+                <nav class="collapse show navbar navbar-vertical navbar-light align-items-start p-0 border border-top-0 border-bottom-0" id="navbar-vertical">
+                    <div class="navbar-nav w-100 overflow-hidden" style="height: 410px">
+                        <a href="/" class="nav-item nav-link">Home</a>
+
+                        <% if (currentUser) { %>
+                                
+                            <a href="/dashboard" class="nav-item nav-link">Welcome <%= currentUser.username %>!</a>
+                            <a href="/logout" class="nav-item nav-link">Logout</a>
+                        <% } else { %>
+
+                            <a href="/login" class="nav-item nav-link">Login</a>
+                            <a href="/signup" class="nav-item nav-link">Register</a>
+                        <% } %>
+                        <a href="/contact" class="nav-item nav-link">Contact Us</a>
+                    </div>
+                </nav>
+            </div>
+    <!-- Topbar and Navbar (reuse from index.ejs or partial) -->
+    <!-- ...existing code... -->
+
+    <!-- Page Header Start -->
+    <div class="container-fluid bg-secondary mb-5">
+        <div class="d-flex flex-column align-items-center justify-content-center" style="min-height: 300px">
+            <h1 class="font-weight-semi-bold text-uppercase mb-3"><%= product.name %></h1>
+            <div class="d-inline-flex">
+                <p class="m-0"><a href="/">Home</a></p>
+                <p class="m-0 px-2">-</p>
+                <p class="m-0">Product Detail</p>
+            </div>
+        </div>
+    </div>
+    <!-- Page Header End -->
+
+    <!-- Shop Detail Start -->
+    <div class="container-fluid py-5">
+        <div class="row px-xl-5">
+            <div class="col-lg-5 pb-5">
+                <div class="border" style="width:100%;height:400px;display:flex;align-items:center;justify-content:center;">
+                    <img class="img-fluid" style="max-height:380px;max-width:100%;object-fit:cover;" src="<%= product.image_url || '/img/product-1.jpg' %>" alt="<%= product.name %>">
+                </div>
+            </div>
+            <div class="col-lg-7 pb-5">
+                <h3 class="font-weight-semi-bold"><%= product.name %></h3>
+                <div class="d-flex mb-3">
+                    <div class="text-primary mr-2">
+                        <small class="fas fa-star"></small>
+                        <small class="fas fa-star"></small>
+                        <small class="fas fa-star"></small>
+                        <small class="fas fa-star-half-alt"></small>
+                        <small class="far fa-star"></small>
+                    </div>
+                    <small class="pt-1">(0 Reviews)</small>
+                </div>
+                <h3 class="font-weight-semi-bold mb-4">₹ <%= product.price %></h3>
+                <p class="mb-4"><%= product.description %></p>
+                <!-- ...existing options, quantity, add to cart, etc... -->
+            </div>
+        </div>
+        <!-- ...tabs and related products can be added here if needed... -->
+    </div>
+    <!-- Shop Detail End -->
+
+    <!-- Footer (reuse from index.ejs or partial) -->
+    <!-- ...existing code... -->
+
+    <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/js/bootstrap.bundle.min.js"></script>
+    <script src="/lib/easing/easing.min.js"></script>
+    <script src="/lib/owlcarousel/owl.carousel.min.js"></script>
+    <script src="/mail/jqBootstrapValidation.min.js"></script>
+    <script src="/mail/contact.js"></script>
+    <script src="/js/main.js"></script>
+</body>
+</html>

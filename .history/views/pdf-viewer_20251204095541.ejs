@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Dropbox PDF — Hardened Fullscreen Viewer (opaque mask)</title>
+
+<script>
+  const IFRAME_SRC = "https://www.dropbox.com/scl/fi/fraizb3xwx6jcmd9307xq/693101df095ae9fd19fea697.pdf?rlkey=38p2ukkfqlrfcwfiv7itk4vob&raw=1";
+  const WATERMARK_BASE = "Purchased by: user@example.com — order #12345";
+</script>
+
+<style>
+  :root { --bg: #000; --wm-opacity: 0.08; }
+  html,body{height:100%;margin:0;background:var(--bg);font-family:Inter,system-ui,Segoe UI,Roboto,Arial;color:#fff}
+  #app{position:fixed;inset:0;display:flex;align-items:stretch;justify-content:center;background:#000}
+  #frameWrap{position:relative;flex:1;overflow:hidden;background:#000}
+  iframe#pdfFrame{position:absolute; inset:0; width:100%; height:100%; border:0; background:#111; pointer-events:auto;}
+  #toolbarMask { position:absolute; top:0; right:0; z-index:60; background: rgba(0,0,0,0.98); pointer-events:auto;
+    width: var(--maskWpx); height: var(--maskHpx); border-bottom-left-radius:12px; box-shadow:0 8px 30px rgba(0,0,0,0.75); }
+  #interactionCatcher { position:absolute; inset:0; z-index:50; pointer-events:auto; }
+  #watermark { position:absolute; inset:0; z-index:70; pointer-events:none; overflow:hidden; }
+  .wmText { position:absolute; transform:rotate(-30deg); opacity:var(--wm-opacity); white-space:nowrap; user-select:none; font-size:18px; color:#fff; }
+  #controls { position:absolute; left:12px; top:12px; z-index:80; display:flex; gap:8px; align-items:center; }
+  button.ctrl { background:rgba(0,0,0,0.6); color:#fff; border:1px solid rgba(255,255,255,0.06); padding:8px 10px; border-radius:6px; cursor:pointer; font-size:13px; }
+  #hint { position:absolute; right:12px; top:12px; z-index:80; color:#ddd; background:rgba(0,0,0,0.4); padding:6px 8px; border-radius:6px; font-size:13px; }
+  ::-webkit-scrollbar { width:0; height:0; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="frameWrap">
+    <!-- NOTE: sandbox & crossorigin removed so Dropbox preview can load normally -->
+    <iframe id="pdfFrame"></iframe>
+
+    <div id="interactionCatcher" title="Protected content — interactions limited"></div>
+    <div id="toolbarMask" title="Protected content — toolbar hidden"></div>
+    <div id="watermark" aria-hidden="true"></div>
+
+    <div id="controls">
+      <button id="fullscreenBtn" class="ctrl">Enter Fullscreen</button>
+    </div>
+
+    <div id="hint">Double-click top-left to hide controls</div>
+  </div>
+</div>
+
+<script>
+const frame = document.getElementById('pdfFrame');
+const toolbarMask = document.getElementById('toolbarMask');
+const interactionCatcher = document.getElementById('interactionCatcher');
+const watermark = document.getElementById('watermark');
+const fullscreenBtn = document.getElementById('fullscreenBtn');
+const controls = document.getElementById('controls');
+const hint = document.getElementById('hint');
+
+frame.src = IFRAME_SRC;
+
+// mask size
+function adjustMask() {
+  const w = Math.max(220, Math.floor(window.innerWidth * 0.22));
+  const h = Math.max(80, Math.floor(window.innerHeight * 0.08));
+  toolbarMask.style.width = w + 'px';
+  toolbarMask.style.height = h + 'px';
+  document.documentElement.style.setProperty('--maskWpx', w + 'px');
+  document.documentElement.style.setProperty('--maskHpx', h + 'px');
+}
+window.addEventListener('resize', adjustMask);
+adjustMask();
+
+// watermark
+function buildWatermark(text) {
+  watermark.innerHTML = '';
+  const w = window.innerWidth, h = window.innerHeight;
+  const stepX = Math.max(260, Math.floor(w/5));
+  const stepY = Math.max(150, Math.floor(h/6));
+  for (let y = -stepY; y < h + stepY; y += stepY) {
+    for (let x = -stepX; x < w + stepX; x += stepX) {
+      const d = document.createElement('div');
+      d.className = 'wmText';
+      d.style.left = (x) + 'px';
+      d.style.top = (y) + 'px';
+      d.style.fontSize = Math.max(12, Math.floor(Math.min(w,h)/50)) + 'px';
+      d.textContent = `${WATERMARK_BASE} — ${new Date().toLocaleString()}`;
+      watermark.appendChild(d);
+    }
+  }
+}
+buildWatermark();
+setInterval(buildWatermark, 30000);
+
+// block clicks that open new tab / middle click etc; allow wheel scroll by toggling pointer-events briefly
+interactionCatcher.oncontextmenu = (e) => { e.preventDefault(); flashWatermark(); };
+interactionCatcher.onmousedown = (e) => {
+  if (e.button === 1 || e.ctrlKey || e.metaKey) { e.preventDefault(); e.stopPropagation(); flashWatermark(); }
+};
+interactionCatcher.onwheel = (e) => {
+  interactionCatcher.style.pointerEvents = 'none';
+  setTimeout(()=> { interactionCatcher.style.pointerEvents = 'auto'; }, 150);
+};
+
+function flashWatermark() {
+  watermark.style.transition = 'opacity 0.18s';
+  watermark.style.opacity = '0.35';
+  setTimeout(()=> watermark.style.opacity = '1', 250);
+}
+
+document.addEventListener('contextmenu', e => { e.preventDefault(); }, {capture:true});
+window.addEventListener('keydown', (e) => {
+  if ((e.ctrlKey || e.metaKey) && ['s','p','u','S','U'].includes(e.key)) { e.preventDefault(); e.stopPropagation(); flashWatermark(); }
+  if (e.key === 'F12' || (e.ctrlKey && e.shiftKey && ['I','C','J'].includes(e.key.toUpperCase()))) { e.preventDefault(); e.stopPropagation(); flashWatermark(); }
+  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); flashWatermark(); }
+}, {capture:true});
+
+// fullscreen
+fullscreenBtn.addEventListener('click', async () => {
+  try {
+    if (!document.fullscreenElement) await document.documentElement.requestFullscreen({ navigationUI: "hide" });
+    else await document.exitFullscreen();
+  } catch (e) { console.warn('Fullscreen failed', e); }
+});
+
+// dblclick to hide controls
+let controlsVisible = true;
+document.addEventListener('dblclick', (e) => {
+  if (e.clientX < window.innerWidth * 0.45 && e.clientY < window.innerHeight * 0.35) {
+    controlsVisible = !controlsVisible;
+    controls.style.display = controlsVisible ? 'flex' : 'none';
+    hint.style.display = controlsVisible ? 'block' : 'none';
+  }
+});
+
+document.addEventListener('visibilitychange', () => { if (!document.hidden) flashWatermark(); });
+window.addEventListener('keyup', (e) => { if (e.key === 'PrintScreen' || e.keyCode === 44) flashWatermark(); });
+
+// try focusing iframe to improve scroll behavior (best-effort)
+frame.addEventListener('load', () => {
+  try { frame.contentWindow.focus(); } catch (e) {}
+});
+
+console.info('Opaque-mask Dropbox viewer loaded.');
+</script>
+</body>
+</html>

@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Dashboard - EBookStore</title>
+
+  <!-- Fonts & icons -->
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet"/>
+
+  <!-- Libraries / styles (keep same as site) -->
+  <link href="/lib/owlcarousel/assets/owl.carousel.min.css" rel="stylesheet">
+  <link href="/css/style.css" rel="stylesheet">
+
+  <style>
+    :root{
+      --accent-1: #667eea;
+      --accent-2: #764ba2;
+      --muted: #6c757d;
+      --card-radius: 12px;
+    }
+    body{ font-family:'Poppins', system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; background:#f8f9fa; }
+    .brand-badge{background:linear-gradient(135deg,var(--accent-1),#2aa0ff);border-radius:8px;padding:6px 10px;color:#fff;font-weight:700}
+    .topbar{background:linear-gradient(90deg,rgba(0,123,255,0.06),rgba(0,123,255,0.02));}
+    input.form-control{border-radius:50px}
+    .btn-pill{border-radius:50px}
+    .back-to-top{position:fixed;right:20px;bottom:20px;border-radius:50%;width:46px;height:46px;display:flex;align-items:center;justify-content:center;z-index:1000}
+
+    /* dashboard specifics (kept from previous design) */
+    .dashboard-header { padding: 22px 0; margin-bottom: 18px; }
+    .dashboard-header h1 { color: #222; margin: 0; font-size: 1.6rem; }
+    .subtle { color: var(--muted); }
+
+    .nav-pills .nav-link { border-radius: 8px; padding: 10px 14px; }
+    .nav-pills .nav-link.active { background: linear-gradient(90deg,var(--accent-1),var(--accent-2)); color: #fff; box-shadow: 0 8px 20px rgba(102,126,234,0.12); }
+
+    .shop-banner {
+      background: linear-gradient(90deg, rgba(102,126,234,0.12), rgba(118,75,162,0.06));
+      border-radius: 14px;
+      padding: 26px;
+      display:flex;
+      align-items:center;
+      gap:20px;
+      box-shadow: 0 8px 28px rgba(15,30,70,0.03);
+    }
+    .shop-banner .cta {
+      background: linear-gradient(135deg,var(--accent-1),var(--accent-2));
+      color: #fff;
+      border-radius: 10px;
+      padding: 12px 18px;
+      font-weight:700;
+      text-decoration:none;
+    }
+
+    .product-card { border: none; border-radius: 10px; box-shadow: 0 6px 18px rgba(10,20,40,0.06); transition: transform .18s, box-shadow .18s; overflow:hidden; }
+    .product-card:hover { transform: translateY(-6px); box-shadow: 0 18px 40px rgba(10,20,40,0.08); }
+    .product-img { height: 220px; object-fit: cover; width:100%; display:block; }
+    .product-title { font-weight: 600; color: #222; margin: 8px 0; }
+    .product-price { color: var(--accent-1); font-size: 18px; font-weight: 700; }
+    .btn-add-cart { background: linear-gradient(135deg, var(--accent-1), var(--accent-2)); border: none; color: #fff; width:100%; border-radius: 8px; }
+    .btn-add-cart:hover { opacity: 0.95; }
+
+    .table thead th { background: #fff; }
+    .empty-message { text-align:center; padding:50px 20px; color: var(--muted); }
+    .empty-message i { font-size: 48px; margin-bottom: 14px; color:#dde2f6; }
+
+    /* vertical nav area sizing */
+    #navbar-vertical { height: 420px; overflow:auto; }
+
+    @media (max-width: 991px){
+      .product-img { height: 180px; }
+      .shop-banner { flex-direction: column; text-align:center; }
+    }
+  </style>
+</head>
+<body>
+  <!-- Topbar (from index.ejs) -->
+  <div class="container-fluid topbar py-3">
+    <div class="row align-items-center px-xl-5">
+      <div class="col-lg-3 col-8 d-flex align-items-center">
+        <a href="/" class="text-decoration-none d-flex align-items-center">
+          <span class="brand-badge mr-3">E</span>
+          <div>
+            <h1 class="m-0 h5 font-weight-bold">EBookStore</h1>
+            <small class="text-muted">Curated ebooks · instant access</small>
+          </div>
+        </a>
+      </div>
+
+      <div class="col-lg-6 col-12 mt-2 mt-lg-0">
+        <form class="d-flex" action="/search" method="GET" role="search">
+          <div class="input-group w-100">
+            <input type="search" name="q" class="form-control" placeholder="Search for products, authors, ISBN..." aria-label="Search" value="<%= typeof query !== 'undefined' ? query : '' %>">
+            <div class="input-group-append">
+              <button class="btn btn-primary btn-pill" type="submit"><i class="fas fa-search"></i></button>
+            </div>
+          </div>
+        </form>
+      </div>
+
+      <div class="col-lg-3 col-12 text-right mt-2 mt-lg-0 d-flex justify-content-end align-items-center">
+        <div class="d-none d-lg-block">
+          <% if (currentUser) { %>
+            <a href="/dashboard" class="btn btn-outline-primary btn-pill mr-2">Hi, <%= currentUser.username || currentUser.name %></a>
+            <a href="/logout" class="btn btn-primary btn-pill">Logout</a>
+          <% } else { %>
+            <a href="/login" class="btn btn-outline-primary btn-pill mr-2">Login</a>
+            <a href="/signup" class="btn btn-primary btn-pill">Register</a>
+          <% } %>
+        </div>
+
+        <div class="d-lg-none ml-2">
+          <button class="btn btn-outline-secondary" type="button" data-toggle="collapse" data-target="#navbarCollapse" aria-controls="navbarCollapse" aria-expanded="false" aria-label="Toggle menu">
+            <i class="fas fa-user"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main layout with vertical nav (from index.ejs) -->
+  <div class="container-fluid mb-5">
+    <div class="row px-xl-5">
+      <div class="col-lg-3 d-none d-lg-block">
+        <a class="btn shadow-none d-flex align-items-center justify-content-between bg-primary text-white w-100"
+           data-toggle="collapse" href="#navbar-vertical"
+           style="height: 65px; margin-top: -1px; padding: 0 30px;">
+          <h6 class="m-0">Ebook Categories <i class="fa fa-angle-down text-dark"></i></h6>
+        </a>
+
+        <nav class="collapse show navbar navbar-vertical navbar-light align-items-start p-0 border border-top-0 border-bottom-0" id="navbar-vertical">
+          <div class="navbar-nav w-100">
+            <a href="/" class="nav-item nav-link">Home</a>
+            <a href="/shop" class="nav-item nav-link">Shop</a>
+            <a href="/contact" class="nav-item nav-link">Contact Us</a>
+            <% if (currentUser) { %>
+              <a href="/dashboard" class="nav-item nav-link active">Dashboard</a>
+              <a href="/logout" class="nav-item nav-link">Logout</a>
+            <% } else { %>
+              <a href="/login" class="nav-item nav-link">Login</a>
+              <a href="/signup" class="nav-item nav-link">Register</a>
+            <% } %>
+          </div>
+        </nav>
+      </div>
+
+      <div class="col-lg-9">
+        <!-- top horizontal navbar (mobile-friendly) -->
+        <nav class="navbar navbar-expand-lg bg-light navbar-light py-3 py-lg-0 px-0 mb-3">
+          <a href="/" class="text-decoration-none d-block d-lg-none">
+            <h1 class="m-0 h4 font-weight-bold"><span class="text-primary">E</span>BookStore</h1>
+          </a>
+          <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarCollapse" aria-controls="navbarCollapse" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+          </button>
+
+          <div class="collapse navbar-collapse" id="navbarCollapse">
+            <div class="navbar-nav mr-auto py-0">
+              <a href="/" class="nav-item nav-link">Home</a>
+              <a href="/shop" class="nav-item nav-link">Shop</a>
+              <a href="/about" class="nav-item nav-link">About</a>
+            </div>
+            <div class="navbar-nav ml-auto">
+              <% if (currentUser) { %>
+                <a href="/dashboard" class="nav-item nav-link d-lg-none">Hi, <%= currentUser.username || currentUser.name %></a>
+                <a href="/logout" class="nav-item nav-link d-lg-none">Logout</a>
+              <% } else { %>
+                <a href="/login" class="nav-item nav-link d-lg-none">Login</a>
+                <a href="/signup" class="nav-item nav-link d-lg-none">Register</a>
+              <% } %>
+            </div>
+          </div>
+        </nav>
+
+        <!-- Dashboard content container -->
+        <div class="container-fluid">
+          <div class="dashboard-header d-flex align-items-center justify-content-between">
+              <div>
+                  <h1>Dashboard</h1>
+                  <div class="subtle">Manage orders, view items and access purchases</div>
+              </div>
+
+              <!-- quick stats -->
+              <div class="d-none d-md-flex align-items-center" style="gap:14px;">
+                  <div class="text-center">
+                      <div style="font-weight:800;font-size:1.2rem;"><%= items.length %></div>
+                      <div class="subtle small">Store items</div>
+                  </div>
+                  <div class="text-center">
+                      <div style="font-weight:800;font-size:1.2rem;"><%= (currentUser.orders || []).length %></div>
+                      <div class="subtle small">Orders</div>
+                  </div>
+              </div>
+          </div>
+
+          <!-- Tabs -->
+          <ul class="nav nav-pills mb-4" id="dashboardTabs" role="tablist">
+              <li class="nav-item mr-2">
+                  <a class="nav-link active" id="overview-tab" data-toggle="pill" href="#overview" role="tab" aria-controls="overview" aria-selected="true">
+                      <i class="fas fa-tachometer-alt mr-1"></i> Overview
+                  </a>
+              </li>
+              <li class="nav-item mr-2">
+                  <a class="nav-link" id="products-tab" data-toggle="pill" href="#products" role="tab" aria-controls="products" aria-selected="false">
+                      <i class="fas fa-box-open mr-1"></i> Products
+                  </a>
+              </li>
+              <li class="nav-item mr-2">
+                  <a class="nav-link" id="account-tab" data-toggle="pill" href="#account" role="tab" aria-controls="account" aria-selected="false">
+                      <i class="fas fa-user-circle mr-1"></i> Account
+                  </a>
+              </li>
+          </ul>
+
+          <div class="tab-content">
+            <!-- Overview -->
+            <div class="tab-pane fade show active" id="overview" role="tabpanel" aria-labelledby="overview-tab">
+                <div class="mb-3">
+                    <h4 class="mb-2">Your Order History</h4>
+                    <p class="subtle small mb-3">Access downloads for digital purchases and order details</p>
+
+                    <% if (success && success.length > 0) { %>
+                        <div class="alert alert-success alert-dismissible fade show" role="alert">
+                            <%= success %>
+                            <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                        </div>
+                    <% } %>
+
+                    <% if (currentUser.orders && currentUser.orders.length > 0) { %>
+                        <div class="table-responsive">
+                            <table class="table table-bordered">
+                                <thead class="thead-light">
+                                    <tr>
+                                        <th>Product</th>
+                                        <th>Amount</th>
+                                        <th>Date</th>
+                                        <th>Payment ID</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <% currentUser.orders.forEach(function(order) { %>
+                                    <tr>
+                                        <td>
+                                            <%= order.product && order.product.name ? order.product.name : 'Product' %>
+                                            <% if (order.product && order.product.is_digital) { %>
+                                                <span class="badge badge-info ml-2">Digital</span>
+                                            <% } %>
+                                        </td>
+                                        <td>₹ <%= order.amount %></td>
+                                        <td><%= new Date(order.createdAt).toLocaleString() %></td>
+                                        <td><%= order.paymentId %></td>
+                                        <td>
+                                            <% if (order.product && order.product.is_digital && order.product.pdf_url) { %>
+                                                <a href="/notes/<%= order._id %>/view" class="btn btn-sm btn-primary">
+                                                    <i class="fas fa-book"></i> View
+                                                </a>
+                                            <% } else { %>
+                                                <span class="text-muted">—</span>
+                                            <% } %>
+                                        </td>
+                                    </tr>
+                                    <% }); %>
+                                </tbody>
+                            </table>
+                        </div>
+                    <% } else { %>
+                        <div class="alert alert-info">You have no orders yet.</div>
+                    <% } %>
+                </div>
+            </div>
+
+            <!-- Products -->
+            <div class="tab-pane fade" id="products" role="tabpanel" aria-labelledby="products-tab">
+                <div class="mb-4">
+                    <div class="shop-banner mb-4">
+                        <div style="flex:1;">
+                            <h3 style="margin:0; font-weight:800;">Discover curated ebooks — special offers inside</h3>
+                            <p class="subtle mb-0">High-quality PDFs & ePubs, instant delivery. Browse bestsellers, categories and exclusive deals.</p>
+                        </div>
+                        <div class="text-right">
+                            <a href="/shop" class="cta" role="button" aria-label="Shop Now">Shop Now <i class="fas fa-arrow-right ml-2"></i></a>
+                        </div>
+                    </div>
+
+                    <% if (!items || items.length === 0) { %>
+                        <div class="empty-message">
+                            <i class="fas fa-inbox"></i>
+                            <h4>No items available</h4>
+                            <p class="subtle">Check back soon for new ebooks. Meanwhile, explore the <a href="/shop">shop</a>.</p>
+                        </div>
+                    <% } else { %>
+                        <div class="row">
+                            <% items.forEach(function(item){ %>
+                                <div class="col-lg-3 col-md-6 mb-4 d-flex align-items-stretch">
+                                    <div class="card product-card w-100">
+                                        <% if (item.image_url) { %>
+                                            <img src="<%= item.image_url %>" alt="<%= item.name %>" class="product-img">
+                                        <% } else { %>
+                                            <div class="product-img d-flex align-items-center justify-content-center" style="background:#f0f2ff;">
+                                                <i class="fas fa-book" style="font-size:48px;color:#c7d2fe;"></i>
+                                            </div>
+                                        <% } %>
+
+                                        <div class="card-body d-flex flex-column">
+                                            <h5 class="product-title"><%= item.name %></h5>
+                                            <p class="text-muted small" style="flex:1;"><%= (item.description || '').substring(0, 80) %><%= (item.description && item.description.length>80) ? '...' : '' %></p>
+                                            <div class="d-flex align-items-center">
+                                                <div class="product-price">₹ <%= Number(item.price).toFixed(2) %></div>
+                                            </div>
+                                            <div class="mt-3">
+                                                <form action="/cart/add/<%= item._id %>" method="POST">
+                                                    <button type="submit" class="btn btn-add-cart">
+                                                        <i class="fas fa-shopping-cart mr-1"></i> Add to cart
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            <% }); %>
+                        </div>
+                    <% } %>
+                </div>
+            </div>
+
+            <!-- Account -->
+            <div class="tab-pane fade" id="account" role="tabpanel" aria-labelledby="account-tab">
+                <div class="card mb-4" style="border-radius: 12px; box-shadow: 0 6px 18px rgba(10,20,40,0.04);">
+                    <div class="card-body">
+                        <h5 class="mb-2">Account details</h5>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <p class="mb-1"><strong>Name</strong></p>
+                                <p class="subtle"><%= currentUser.name %></p>
+                            </div>
+                            <div class="col-md-6">
+                                <p class="mb-1"><strong>Email</strong></p>
+                                <p class="subtle"><%= currentUser.email %></p>
+                            </div>
+                        </div>
+                        <div class="mt-3">
+                            <a href="/account/edit" class="btn btn-outline-primary btn-sm">Edit profile</a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <h5>Saved purchases</h5>
+                    <p class="subtle small">Quick access to past downloads and receipts.</p>
+                    <% if (currentUser.orders && currentUser.orders.length>0) { %>
+                        <ul class="list-group">
+                            <% currentUser.orders.slice(0,5).forEach(function(order){ %>
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <strong><%= order.product && order.product.name ? order.product.name : 'Product' %></strong>
+                                        <div class="subtle small"><%= new Date(order.createdAt).toLocaleDateString() %></div>
+                                    </div>
+                                    <div class="text-right">
+                                        <span class="subtle small">₹ <%= order.amount %></span>
+                                    </div>
+                                </li>
+                            <% }) %>
+                        </ul>
+                    <% } else { %>
+                        <div class="alert alert-light">No saved purchases.</div>
+                    <% } %>
+                </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer (light, same tone as site) -->
+  <div class="container-fluid bg-secondary text-dark mt-5 pt-5">
+    <div class="row px-xl-5 pt-5">
+      <div class="col-lg-4 col-md-12 mb-5 pr-3 pr-xl-5">
+        <a href="/" class="text-decoration-none d-flex align-items-center">
+          <span class="brand-badge mr-3">E</span>
+          <h3 class="m-0">EBookStore</h3>
+        </a>
+        <p class="mt-3 text-muted">Curated ebooks for enthusiasts, students and professionals. High-quality content delivered instantly.</p>
+      </div>
+      <div class="col-lg-8 col-md-12">
+        <div class="row">
+          <div class="col-md-4 mb-5">
+            <h5 class="font-weight-bold text-dark mb-4">Quick Links</h5>
+            <div class="d-flex flex-column justify-content-start">
+              <a class="text-dark mb-2" href="/">Home</a>
+              <a class="text-dark mb-2" href="/shop">Our Shop</a>
+              <a class="text-dark mb-2" href="/contact">Contact Us</a>
+            </div>
+          </div>
+          <div class="col-md-4 mb-5">
+            <h5 class="font-weight-bold text-dark mb-4">Resources</h5>
+            <div class="d-flex flex-column justify-content-start">
+              <a class="text-dark mb-2" href="#">Blog</a>
+              <a class="text-dark mb-2" href="#">Guides</a>
+            </div>
+          </div>
+          <div class="col-md-4 mb-5">
+            <h5 class="font-weight-bold text-dark mb-4">Newsletter</h5>
+            <form action="">
+              <div class="form-group">
+                <input type="text" class="form-control border-0 py-3" placeholder="Your Name" required />
+              </div>
+              <div class="form-group">
+                <input type="email" class="form-control border-0 py-3" placeholder="Your Email" required />
+              </div>
+              <div>
+                <button class="btn btn-primary btn-block border-0 py-3 btn-pill" type="submit">Subscribe Now</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row border-top border-light mx-xl-5 py-4">
+      <div class="col-md-6 px-xl-0">
+        <p class="mb-md-0 text-center text-md-left text-dark small">
+          &copy; <a class="text-dark font-weight-semi-bold" href="#">EBookStore</a>. All Rights Reserved.
+        </p>
+      </div>
+      <div class="col-md-6 px-xl-0 text-center text-md-right">
+        <img class="img-fluid" src="/img/payments.png" alt="payments">
+      </div>
+    </div>
+  </div>
+
+  <!-- Back to Top -->
+  <a href="#" class="btn btn-primary back-to-top" aria-label="Back to top"><i class="fa fa-angle-double-up"></i></a>
+
+  <!-- JS libs -->
+  <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
+  <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/js/bootstrap.bundle.min.js"></script>
+
+  <script>
+    // restore tab from hash and keep hash updated
+    (function(){
+      var hash = window.location.hash;
+      if(hash) {
+        var tabLink = document.querySelector('a[href="' + hash + '"]');
+        if(tabLink) { $(tabLink).tab('show'); }
+      }
+      $('a[data-toggle="pill"]').on('shown.bs.tab', function (e) {
+        history.replaceState(null, null, e.target.getAttribute('href'));
+      });
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>PDF Viewer — iframe + watermark (no-proxy)</title>
+
+<!-- ============== CONFIG ============== -->
+<!-- Replace with your working iframe src (you already provided this) -->
+<script>
+  const IFRAME_SRC = "https://www.dropbox.com/scl/fi/fraizb3xwx6jcmd9307xq/693101df095ae9fd19fea697.pdf?rlkey=38p2ukkfqlrfcwfiv7itk4vob&raw=1";
+  // Watermark base text. Ideally set per-customer when serving this HTML.
+  const WATERMARK_BASE = "Purchased by: user@example.com — order #12345";
+</script>
+<!-- ============== end config ============== -->
+
+<style>
+  :root {
+    --bg: #000;
+    --watermark-opacity: 0.08;
+    --watermark-size: 20px;
+  }
+  html,body{height:100%;margin:0;background:var(--bg);font-family:Inter,system-ui,Segoe UI,Roboto,Arial;color:#fff}
+  /* viewer container */
+  #app{position:fixed;inset:0;display:flex;flex-direction:column;align-items:stretch;justify-content:center;background:#000;}
+  /* full-screen iframe (no browser chrome inside this page) */
+  #frameWrap{position:relative;flex:1;display:block;overflow:hidden;background:#000;}
+  iframe#pdfFrame {
+    position:absolute;inset:0;border:0;width:100%;height:100%;
+    /* disable pointer events if you want to prevent any interaction with the iframe (right-click, selection etc).
+       But note: then the user cannot scroll/zoom inside the iframe. Set to 'auto' if you need interactivity. */
+    pointer-events: auto; /* change to 'none' to block interactions */
+    background: #111;
+  }
+
+  /* Invisible blocker that intercepts pointer events (set display:block to enable) */
+  #interactionBlock {
+    position:absolute; inset:0; z-index:30;
+    /* set to block to capture all interactions; set to none to allow interaction */
+    pointer-events: auto; /* change to 'none' to allow interacting with iframe */
+    background: transparent;
+  }
+
+  /* watermark overlay (top of everything) */
+  #watermark {
+    position:absolute; inset:0; z-index:40; pointer-events:none; overflow:hidden;
+    display:block;
+  }
+  .wmText {
+    position:absolute;
+    transform: rotate(-30deg);
+    opacity: var(--watermark-opacity);
+    color: rgba(255,255,255,0.9);
+    white-space:nowrap;
+    font-size: var(--watermark-size);
+    letter-spacing: 1px;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  /* small top bar - hidden by default, shown only if needed */
+  #topBar { position: absolute; top: 8px; left: 12px; z-index:60; display:flex; gap:8px; align-items:center; }
+  .controlBtn { background: rgba(0,0,0,0.6); color:#fff; border:1px solid rgba(255,255,255,0.06); padding:8px 10px; border-radius:6px; cursor:pointer; font-size:13px; }
+  #message { position: absolute; bottom: 12px; left:12px; z-index:60; color:#eee; background: rgba(0,0,0,0.5); padding:8px 10px; border-radius:6px; font-size:13px; }
+
+  /* Hide scrollbars (if any) */
+  ::-webkit-scrollbar { width: 0; height: 0; }
+</style>
+</head>
+<body>
+<div id="app" role="application" aria-label="Secure PDF viewer">
+  <div id="frameWrap">
+    <iframe id="pdfFrame" src=""></iframe>
+
+    <!-- Interaction blocker: currently set to capture contextmenu and pointer events.
+         If you want users to interact (zoom/scroll) set pointer-events: none on this element in JS. -->
+    <div id="interactionBlock" title="Content protected"></div>
+
+    <!-- Watermark overlay -->
+    <div id="watermark" aria-hidden="true"></div>
+
+    <!-- Minimal top controls (hidden visually but available if needed) -->
+    <div id="topBar" style="display:none;">
+      <button id="fsBtn" class="controlBtn">Enter Fullscreen</button>
+      <button id="allowInteract" class="controlBtn">Allow Interaction</button>
+    </div>
+
+    <div id="message">If nothing appears, open the PDF in a new tab via the button in the top-left.</div>
+  </div>
+</div>
+
+<script>
+/* ====== Initialization ====== */
+const frame = document.getElementById('pdfFrame');
+const block = document.getElementById('interactionBlock');
+const watermark = document.getElementById('watermark');
+const message = document.getElementById('message');
+const topBar = document.getElementById('topBar');
+const fsBtn = document.getElementById('fsBtn');
+const allowInteractBtn = document.getElementById('allowInteract');
+
+// Use your working iframe src
+frame.src = typeof IFRAME_SRC !== 'undefined' ? IFRAME_SRC : window.location.href;
+
+// By default we intercept pointer events to prevent right-click & selection on the PDF
+// If you want the user to navigate inside the iframe (scroll/zoom), set this to false.
+let blockInteractions = true;
+function applyInteractionBlock() {
+  if (blockInteractions) {
+    block.style.pointerEvents = 'auto'; // capture mouse/touch
+    block.addEventListener('contextmenu', e => e.preventDefault(), {capture:true});
+  } else {
+    block.style.pointerEvents = 'none';
+    block.removeEventListener('contextmenu', e=>e.preventDefault());
+  }
+}
+applyInteractionBlock();
+
+// Build grid watermark
+function buildWatermark(text) {
+  watermark.innerHTML = '';
+  const w = window.innerWidth, h = window.innerHeight;
+  const stepX = Math.max(240, Math.floor(w/5));
+  const stepY = Math.max(140, Math.floor(h/6));
+  for (let y = -stepY; y < h + stepY; y += stepY) {
+    for (let x = -stepX; x < w + stepX; x += stepX) {
+      const d = document.createElement('div');
+      d.className = 'wmText';
+      d.style.left = (x)+'px';
+      d.style.top = (y)+'px';
+      d.style.fontSize = Math.max(12, Math.floor(Math.min(w,h)/50)) + 'px';
+      d.textContent = text;
+      watermark.appendChild(d);
+    }
+  }
+}
+function refreshWatermark() {
+  const ts = new Date().toLocaleString();
+  buildWatermark((typeof WATERMARK_BASE !== 'undefined' ? WATERMARK_BASE : '') + ' — ' + ts);
+}
+refreshWatermark();
+setInterval(refreshWatermark, 30_000);
+
+/* Request fullscreen (may be blocked without user gesture) */
+async function enterFullscreen() {
+  try {
+    await document.documentElement.requestFullscreen({ navigationUI: "hide" });
+  } catch (e) {
+    // ignore or show a note
+    console.warn('Fullscreen request failed:', e);
+  }
+}
+fsBtn.addEventListener('click', enterFullscreen);
+
+/* Toggle allowing interaction (useful for debugging or if user needs to zoom/scroll) */
+allowInteractBtn.addEventListener('click', () => {
+  blockInteractions = !blockInteractions;
+  applyInteractionBlock();
+  allowInteractBtn.textContent = blockInteractions ? 'Allow Interaction' : 'Block Interaction';
+});
+
+/* Block common keys and shortcuts (best-effort) */
+window.addEventListener('keydown', (e) => {
+  // Prevent Save / Print / View Source shortcuts
+  if ((e.ctrlKey || e.metaKey) && ['s','p','u','S','U'].includes(e.key)) {
+    e.preventDefault(); e.stopPropagation();
+  }
+  // Prevent F12 and common devtools combos
+  if (e.key === 'F12' || (e.ctrlKey && e.shiftKey && ['I','C','J'].includes(e.key.toUpperCase()))) {
+    e.preventDefault(); e.stopPropagation();
+  }
+  // Navigation keys blocked when interactions blocked (so they don't affect iframe)
+  if (blockInteractions && ['ArrowLeft','ArrowRight','PageUp','PageDown'].includes(e.key)) {
+    e.preventDefault(); e.stopPropagation();
+  }
+});
+
+/* Block right-click on document */
+document.addEventListener('contextmenu', e => e.preventDefault(), {capture:true});
+
+/* Try to detect PrintScreen / visibility change and flash overlay briefly */
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) {
+    // if user returned to tab, briefly darken the view to deter quick screenshotting
+    watermark.style.transition = 'opacity 0.2s';
+    watermark.style.opacity = '0.35';
+    setTimeout(()=> watermark.style.opacity = '1', 350);
+  }
+});
+
+/* Prevent drag/drop selection */
+['selectstart','dragstart','copy','cut','paste'].forEach(evt => {
+  document.addEventListener(evt, e => e.preventDefault(), {capture:true});
+});
+
+/* If iframe fails to load (Dropbox may show a "preview" UI), give user a safe option to open in new tab */
+frame.addEventListener('load', () => {
+  // sometimes browser returns about:blank initially; only show success once a real URL is loaded
+  try {
+    // best-effort: if frame loaded, hide message
+    message.style.display = 'none';
+  } catch (e) {
+    message.style.display = 'block';
+  }
+});
+
+/* Show a small top bar with controls if user double-clicks top-left (hidden by default) */
+let topBarVisible = false;
+document.addEventListener('dblclick', (e) => {
+  topBarVisible = !topBarVisible;
+  topBar.style.display = topBarVisible ? 'flex' : 'none';
+});
+
+/* Friendly note about limitations (console & visible) */
+console.info('Viewer loaded. Note: client-side measures cannot prevent OS-level screenshots or determined scraping. For stronger protection, use server-rendered images + per-customer watermarks or DRM.');
+message.innerText = 'Viewer ready — double-click top-left to reveal small controls (fullscreen, allow interaction).';
+</script>
+</body>
+</html>

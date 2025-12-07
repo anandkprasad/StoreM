@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - EShopper</title>
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.10.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f8f9fa; }
+        .navbar { background-color: #f8f9fa; border-bottom: 1px solid #dee2e6; }
+        .navbar-brand { font-weight: bold; color: #667eea !important; }
+        .dashboard-header { padding: 20px 0; margin-bottom: 30px; }
+        .dashboard-header h1 { color: #333; margin-bottom: 10px; }
+        .product-card { border: none; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); transition: transform 0.3s, box-shadow 0.3s; }
+        .product-card:hover { transform: translateY(-5px); box-shadow: 0 8px 16px rgba(0,0,0,0.15); }
+        .product-img { height: 250px; object-fit: cover; border-radius: 8px 8px 0 0; }
+        .product-title { font-weight: 600; color: #333; margin: 10px 0; }
+        .product-price { color: #667eea; font-size: 20px; font-weight: bold; }
+        .product-description { color: #666; font-size: 14px; }
+        .btn-add-cart { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none; width: 100%; }
+        .btn-add-cart:hover { background: linear-gradient(135deg, #764ba2 0%, #667eea 100%); color: white; }
+        .empty-message { text-align: center; padding: 50px 20px; }
+        .empty-message i { font-size: 60px; color: #ccc; margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-light">
+        <div class="container">
+            <a class="navbar-brand" href="/"><span style="color: #667eea;">E</span>Shopper</a>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ml-auto">
+                    <li class="nav-item">
+                        <span class="nav-link">Welcome, <strong><%= currentUser.name %></strong></span>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/logout">Logout</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container mt-5">
+        <div class="dashboard-header">
+            <h1>Store Items</h1>
+            <p class="text-muted">Browse and purchase from our collection</p>
+        </div>
+
+        <div class="dashboard-header">
+            <h2>Your Order History</h2>
+        </div>
+        <% if (currentUser.orders && currentUser.orders.length > 0) { %>
+        <div class="table-responsive mb-5">
+            <table class="table table-bordered">
+                <thead>
+                    <tr>
+                        <th>Product</th>
+                        <th>Amount</th>
+                        <th>Date</th>
+                        <th>Payment ID</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% currentUser.orders.forEach(function(order) { %>
+                    <tr>
+                        <td><%= order.product.name || order.product %></td>
+                        <td>₹ <%= order.amount %></td>
+                        <td><%= new Date(order.createdAt).toLocaleString() %></td>
+                        <td><%= order.paymentId %></td>
+                    </tr>
+                    <% }); %>
+                </tbody>
+            </table>
+        </div>
+        <% } else { %>
+        <div class="alert alert-info">No orders yet.</div>
+        <% } %>
+
+        <% if (success && success.length > 0) { %>
+            <div class="alert alert-success alert-dismissible fade show" role="alert">
+                <%= success %>
+                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+        <% } %>
+
+        <% if (items.length === 0) { %>
+            <div class="empty-message">
+                <i class="fas fa-inbox"></i>
+                <h3>No items available</h3>
+                <p class="text-muted">Check back soon for new products!</p>
+            </div>
+        <% } else { %>
+            <div class="row">
+                <% items.forEach(item => { %>
+                    <div class="col-lg-3 col-md-6 mb-4">
+                        <div class="card product-card">
+                            <% if (item.image_url) { %>
+                                <img src="<%= item.image_url %>" alt="<%= item.name %>" class="product-img">
+                            <% } else { %>
+                                <div class="product-img" style="background-color: #f0f0f0; display: flex; align-items: center; justify-content: center;">
+                                    <i class="fas fa-image" style="font-size: 50px; color: #ccc;"></i>
+                                </div>
+                            <% } %>
+                            <div class="card-body">
+                                <h5 class="product-title"><%= item.name %></h5>
+                                <p class="product-description"><%= item.description.substring(0, 60) %>...</p>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span class="product-price">$<%= item.price.toFixed(2) %></span>
+                                </div>
+                                <button class="btn btn-primary btn-add-cart mt-3">
+                                    <i class="fas fa-shopping-cart"></i> Add to Cart
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                <% }); %>
+            </div>
+        <% } %>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

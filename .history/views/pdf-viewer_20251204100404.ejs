@@ -1,0 +1,185 @@
+<!-- views/pdf-viewer.ejs -->
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>PDF Viewer</title>
+<style>
+  :root { --bg:#000; --wm-opacity:0.08; }
+  html,body{height:100%;margin:0;background:var(--bg);font-family:Inter,system-ui,Segoe UI,Roboto,Arial;color:#fff}
+  #app{position:fixed;inset:0;display:flex;align-items:stretch;justify-content:center;background:#000}
+  #frameWrap{position:relative;flex:1;overflow:hidden;background:#000}
+  iframe#pdfFrame{position:absolute;inset:0;width:100%;height:100%;border:0;background:#111;pointer-events:auto;}
+  /* opaque top-right mask to hide Dropbox toolbar */
+  #toolbarMask{position:absolute;top:0;right:0;z-index:60;background:rgba(0,0,0,0.98);
+    pointer-events:auto;width:var(--maskWpx);height:var(--maskHpx);border-bottom-left-radius:12px;
+    box-shadow:0 8px 30px rgba(0,0,0,0.75);}
+  #watermark{position:absolute;inset:0;z-index:70;pointer-events:none;overflow:hidden}
+  .wmText{position:absolute;transform:rotate(-30deg);opacity:var(--wm-opacity);white-space:nowrap;user-select:none;font-size:18px;color:#fff}
+  #controls{position:absolute;left:12px;top:12px;z-index:80;display:flex;gap:8px;align-items:center}
+  button.ctrl{background:rgba(0,0,0,0.6);color:#fff;border:1px solid rgba(255,255,255,0.06);padding:8px 10px;border-radius:6px;cursor:pointer;font-size:13px}
+  #hint{position:absolute;right:12px;top:12px;z-index:80;color:#ddd;background:rgba(0,0,0,0.4);padding:6px 8px;border-radius:6px;font-size:13px}
+  ::-webkit-scrollbar{width:0;height:0}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="frameWrap">
+    <iframe id="pdfFrame" title="PDF viewer"></iframe>
+    <div id="toolbarMask" title="Content protected — toolbar hidden"></div>
+    <div id="watermark" aria-hidden="true"></div>
+
+    
+
+    <div id="hint">Double-click top-left to hide controls</div>
+  </div>
+</div>
+
+<!-- Safe JSON payload for user (avoid putting raw JSON into JS directly) -->
+<script type="application/json" id="__userData"><%- JSON.stringify(user || {}) %></script>
+
+<script>
+  // Values passed from server
+  const ORIGINAL_PDF_URL = "<%= (pdfUrl || '') %>";
+  // Read user safely from the JSON <script> tag
+  const USER = (function(){
+    try {
+      const el = document.getElementById('__userData');
+      return el ? JSON.parse(el.textContent || '{}') : {};
+    } catch (e) { console.warn('Failed to parse user JSON', e); return {}; }
+  })();
+  const ORDER_ID = "<%= (orderId || '') %>";
+
+  // Convert possible Dropbox share / preview URLs to embed-ready raw form.
+  // Works with: /scl/fi/... and /s/... forms.
+  function toDropboxRaw(url) {
+    if (!url) return url;
+    try {
+      const u = new URL(url);
+      // If host is dropbox.com, replace query with raw=1
+      if (u.hostname.endsWith('dropbox.com')) {
+        // preserve rlkey if present
+        const rl = u.searchParams.get('rlkey');
+        u.search = '';
+        u.searchParams.set('raw','1');
+        if (rl) u.searchParams.set('rlkey', rl);
+        return u.toString();
+      }
+      return url;
+    } catch (e) {
+      // fallback: naive replace of query
+      if (url.includes('dropbox.com')) {
+        const idx = url.indexOf('?');
+        if (idx === -1) return url + '?raw=1';
+        return url.substring(0, idx) + '?raw=1';
+      }
+      return url;
+    }
+  }
+
+  // Build watermark text from user and order
+  function makeWatermarkBase() {
+    // Prefer email or name if available, else fallback to "Purchased"
+    let id = '';
+    if (USER && (USER.email || USER.username || USER.name)) {
+      id = USER.email || USER.username || USER.name;
+    } else {
+      id = 'Purchased';
+    }
+    let ord = ORDER_ID || '';
+    return `${id} — order ${ord}`;
+  }
+
+  const IFRAME_SRC = toDropboxRaw(ORIGINAL_PDF_URL);
+  const WATERMARK_BASE = makeWatermarkBase();
+
+  // ---- DOM references ----
+  const frame = document.getElementById('pdfFrame');
+  const toolbarMask = document.getElementById('toolbarMask');
+  const watermark = document.getElementById('watermark');
+  const fullscreenBtn = document.getElementById('fullscreenBtn');
+  const controls = document.getElementById('controls');
+  const hint = document.getElementById('hint');
+
+  // Set iframe src
+  frame.src = IFRAME_SRC;
+
+  // mask sizing (tweak multipliers if necessary)
+  function adjustMask(){
+    const w = Math.max(220, Math.floor(window.innerWidth * 0.22));
+    const h = Math.max(80, Math.floor(window.innerHeight * 0.08));
+    toolbarMask.style.width = w + 'px';
+    toolbarMask.style.height = h + 'px';
+    document.documentElement.style.setProperty('--maskWpx', w + 'px');
+    document.documentElement.style.setProperty('--maskHpx', h + 'px');
+  }
+  window.addEventListener('resize', adjustMask);
+  adjustMask();
+
+  // watermark grid builder (repeats watermark across the view)
+  function buildWatermark(text) {
+    watermark.innerHTML = '';
+    const w = window.innerWidth, h = window.innerHeight;
+    const stepX = Math.max(240, Math.floor(w/5));
+    const stepY = Math.max(140, Math.floor(h/6));
+    for (let y = -stepY; y < h + stepY; y += stepY) {
+      for (let x = -stepX; x < w + stepX; x += stepX) {
+        const d = document.createElement('div');
+        d.className = 'wmText';
+        d.style.left = (x) + 'px';
+        d.style.top = (y) + 'px';
+        d.style.fontSize = Math.max(12, Math.floor(Math.min(w,h)/50)) + 'px';
+        d.textContent = `${WATERMARK_BASE} — ${new Date().toLocaleString()}`;
+        watermark.appendChild(d);
+      }
+    }
+  }
+  buildWatermark();
+  setInterval(buildWatermark, 30000);
+
+  // Block some common shortcuts at the parent page level
+  document.addEventListener('contextmenu', e => e.preventDefault(), {capture:true});
+  window.addEventListener('keydown', (e) => {
+    // block Save / Print / View Source keys at page-level (best-effort)
+    if ((e.ctrlKey || e.metaKey) && ['s','p','u','S','U'].includes(e.key)) { e.preventDefault(); e.stopPropagation(); flashWatermark(); }
+    if (e.key === 'F12' || (e.ctrlKey && e.shiftKey && ['I','C','J'].includes(e.key.toUpperCase()))) { e.preventDefault(); e.stopPropagation(); flashWatermark(); }
+  }, {capture:true});
+
+  // flash watermark briefly as deterrent
+  function flashWatermark() {
+    watermark.style.transition = 'opacity 0.18s';
+    watermark.style.opacity = '0.35';
+    setTimeout(()=> watermark.style.opacity = '1', 250);
+  }
+
+  // Fullscreen button (user gesture needed)
+  fullscreenBtn.addEventListener('click', async () => {
+    try {
+      if (!document.fullscreenElement) await document.documentElement.requestFullscreen({ navigationUI: "hide" });
+      else await document.exitFullscreen();
+    } catch (e) { console.warn('Fullscreen failed', e); }
+  });
+
+  // Hide controls by double-clicking top-left
+  let controlsVisible = true;
+  document.addEventListener('dblclick', (e) => {
+    if (e.clientX < window.innerWidth * 0.45 && e.clientY < window.innerHeight * 0.35) {
+      controlsVisible = !controlsVisible;
+      controls.style.display = controlsVisible ? 'flex' : 'none';
+      hint.style.display = controlsVisible ? 'block' : 'none';
+    }
+  });
+
+  // Flash watermark on visibility change or PrintScreen key (best-effort)
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) flashWatermark(); });
+  window.addEventListener('keyup', (e) => { if (e.key === 'PrintScreen' || e.keyCode === 44) flashWatermark(); });
+
+  // Focus iframe on load (best-effort)
+  frame.addEventListener('load', () => { try { frame.contentWindow.focus(); } catch (e) {} });
+
+  // Quick sanity in console
+  console.info('PDF viewer loaded. iframe src (embed-ready):', IFRAME_SRC);
+</script>
+</body>
+</html>

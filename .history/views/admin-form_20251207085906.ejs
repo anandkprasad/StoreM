@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <title>Admin - <%= action === 'add' ? 'Add Item' : 'Edit Item' %></title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <!-- Google Web Fonts -->
+  <link rel="preconnect" href="https://fonts.gstatic.com">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+
+  <!-- Bootstrap & FontAwesome -->
+  <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
+
+  <!-- App styles (keeps consistency with index.ejs) -->
+  <style>
+    :root{
+      --primary:#007bff;
+      --muted:#6c757d;
+      --card-radius:14px;
+      --shadow-strong: 0 8px 30px rgba(21,30,60,0.07);
+    }
+
+    body{font-family:'Poppins',system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial;background:#f4f6fb;}
+
+    /* Topbar */
+    .topbar{background:linear-gradient(90deg,rgba(0,123,255,0.04),rgba(0,123,255,0.01));padding:14px 0}
+    .brand-badge{background:linear-gradient(135deg,var(--primary),#2aa0ff);border-radius:8px;padding:6px 10px;color:#fff;font-weight:700}
+
+    /* Sidebar */
+    .navbar-vertical{min-height:260px}
+    .navbar-vertical .nav-link{padding:10px 18px;border-left:4px solid transparent}
+    .navbar-vertical .nav-link.active, .navbar-vertical .nav-link:hover{background:#fff;border-left-color:var(--primary)}
+
+    /* Form styling */
+    .admin-card{border-radius:16px;background:#fff;padding:22px;box-shadow:var(--shadow-strong)}
+    .form-header h1{font-size:1.4rem;margin-bottom:6px}
+    input.form-control, textarea.form-control{border-radius:8px}
+    .preview-image{max-width:100%;height:auto;border-radius:8px;margin-top:8px;max-height:300px}
+    .btn-pill{border-radius:50px}
+
+    /* Responsiveness tweaks */
+    @media (max-width:991px){
+      .navbar-vertical{display:none}
+    }
+  </style>
+</head>
+
+<body>
+  <!-- Topbar (shared with index.ejs look) -->
+  <div class="container-fluid topbar">
+    <div class="row align-items-center px-xl-5">
+      <div class="col-lg-3 col-8 d-flex align-items-center">
+        <a href="/" class="text-decoration-none d-flex align-items-center">
+          <span class="brand-badge mr-3">E</span>
+          <div>
+            <h1 class="m-0 h6 font-weight-bold">EBookStore - Admin</h1>
+            <small class="text-muted">Manage products & content</small>
+          </div>
+        </a>
+      </div>
+
+      <div class="col-lg-6 col-12 mt-2 mt-lg-0">
+        <form class="d-flex" action="/admin/search" method="GET" role="search">
+          <div class="input-group w-100">
+            <input type="search" name="q" class="form-control" placeholder="Search items by name, author, ISBN..." aria-label="Search">
+            <div class="input-group-append">
+              <button class="btn btn-primary btn-pill" type="submit"><i class="fas fa-search"></i></button>
+            </div>
+          </div>
+        </form>
+      </div>
+
+      <div class="col-lg-3 col-4 text-right mt-2 mt-lg-0 d-flex justify-content-end align-items-center">
+        <% if (currentUser) { %>
+          <a href="/dashboard" class="btn btn-outline-primary btn-pill mr-2">Hi, <%= currentUser.username %></a>
+          <a href="/logout" class="btn btn-primary btn-pill">Logout</a>
+        <% } else { %>
+          <a href="/login" class="btn btn-outline-primary btn-pill mr-2">Login</a>
+          <a href="/signup" class="btn btn-primary btn-pill">Register</a>
+        <% } %>
+      </div>
+    </div>
+  </div>
+
+  <!-- Page layout: sidebar + content -->
+  <div class="container-fluid mt-4">
+    <div class="row px-xl-5">
+
+      <!-- Sidebar -->
+      <div class="col-lg-3 d-none d-lg-block">
+        <a class="btn shadow-none d-flex align-items-center justify-content-between bg-primary text-white w-100"
+           data-toggle="collapse" href="#navbar-vertical"
+           style="height: 60px; padding: 0 20px;">
+          <h6 class="m-0">Admin Menu <i class="fa fa-angle-down text-dark"></i></h6>
+        </a>
+
+        <nav class="collapse show navbar navbar-vertical navbar-light align-items-start p-0 border mt-2" id="navbar-vertical">
+          <div class="navbar-nav w-100 overflow-hidden" style="height: 320px">
+            <a href="/admin" class="nav-item nav-link active">Dashboard</a>
+            <a href="/admin/items" class="nav-item nav-link">Products</a>
+            <a href="/admin/items/add" class="nav-item nav-link">Add New Item</a>
+            <a href="/admin/orders" class="nav-item nav-link">Orders</a>
+            <a href="/admin/users" class="nav-item nav-link">Users</a>
+            <a href="/" class="nav-item nav-link">View Store</a>
+          </div>
+        </nav>
+      </div>
+
+      <!-- Content -->
+      <div class="col-lg-9">
+        <div class="admin-card">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <div>
+              <h2 class="mb-0"><%= action === 'add' ? 'Add New Item' : 'Edit Item' %></h2>
+              <small class="text-muted">Use this form to <%= action === 'add' ? 'create a new product' : 'update product details' %></small>
+            </div>
+
+            <div>
+              <a href="/admin/items" class="btn btn-secondary btn-pill mr-2"><i class="fas fa-arrow-left"></i> Back</a>
+              <a href="/" class="btn btn-outline-primary btn-pill">View Store</a>
+            </div>
+          </div>
+
+          <!-- Flash messages (if any) -->
+          <% if (success && success.length) { %>
+            <div class="mb-3">
+              <% flash.forEach(function(f){ %>
+                <div class="alert alert-<%= f.type || 'info' %> mb-2"><%= f.message %></div>
+              <% }) %>
+            </div>
+          <% } %>
+
+          <form method="POST" enctype="multipart/form-data">
+            <div class="form-row">
+              <div class="form-group col-md-8">
+                <label for="name">Item Name *</label>
+                <input type="text" class="form-control" id="name" name="name" value="<%= item?.name || '' %>" required>
+              </div>
+
+              <div class="form-group col-md-4">
+                <label for="price">Price (₹) *</label>
+                <input type="number" class="form-control" id="price" name="price" step="0.01" min="0" value="<%= item?.price || '' %>" required>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="description">Description *</label>
+              <textarea class="form-control" id="description" name="description" rows="4" required><%= item?.description || '' %></textarea>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group col-md-6">
+                <label for="author">Author</label>
+                <input type="text" class="form-control" id="author" name="author" value="<%= item?.author || '' %>">
+                <small class="form-text text-muted">Optional: author or publisher</small>
+              </div>
+
+              <div class="form-group col-md-6">
+                <label for="isbn">ISBN / SKU</label>
+                <input type="text" class="form-control" id="isbn" name="isbn" value="<%= item?.isbn || '' %>">
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group col-md-6">
+                <label for="image">Product Image</label>
+                <input type="file" class="form-control-file" id="image" name="image" accept="image/*" onchange="previewImage(this)">
+                <small class="form-text text-muted">Supported: JPG, PNG, GIF. Max size: 5MB</small>
+
+                <% if (item && item.image_url) { %>
+                  <div class="mt-3">
+                    <p class="mb-1"><strong>Current Image:</strong></p>
+                    <img src="<%= item.image_url %>" alt="<%= item.name %>" class="preview-image">
+                  </div>
+                <% } %>
+
+                <div id="preview-container"></div>
+              </div>
+
+              <div class="form-group col-md-6">
+                <label>Category</label>
+                <select class="form-control" name="category">
+                  <option value="">Select category</option>
+                  <% categories.forEach(function(c){ %>
+                    <option value="<%= c._id %>" <%= item && item.category && item.category.toString() === c._id.toString() ? 'selected' : '' %>><%= c.name %></option>
+                  <% }) %>
+                </select>
+
+                <div class="form-check mt-3">
+                  <input class="form-check-input" type="checkbox" id="is_digital" name="is_digital" value="true" <%= item && item.is_digital ? 'checked' : '' %>>
+                  <label class="form-check-label" for="is_digital">Digital Product (PDF)</label>
+                </div>
+                <small class="form-text text-muted">Check if this product is a downloadable PDF</small>
+
+                <div class="form-group mt-3 <%= item && item.is_digital ? '' : 'd-none' %>" id="pdf-upload-group">
+                  <label for="pdf">PDF File <small class="text-muted">(required for digital products)</small></label>
+                  <input type="file" class="form-control-file" id="pdf" name="pdf" accept=".pdf">
+                  <small class="form-text text-muted">Max size: 50MB</small>
+
+                  <% if (item && item.pdf_url) { %>
+                    <div class="mt-2"><strong>Current PDF:</strong> Uploaded (<%= item.page_images ? item.page_images.length : 0 %> pages converted)</div>
+                  <% } %>
+                </div>
+              </div>
+            </div>
+
+            <div class="form-row align-items-center">
+              <div class="col-md-6">
+                <div class="form-group mb-0">
+                  <label for="stock">Stock Quantity</label>
+                  <input type="number" class="form-control" id="stock" name="stock" min="0" value="<%= typeof item?.stock !== 'undefined' ? item.stock : 100 %>">
+                </div>
+              </div>
+
+              <div class="col-md-6 text-right">
+                <div class="btn-group btn-group-sm" role="group">
+                  <a href="/admin/items" class="btn btn-secondary btn-pill">Cancel</a>
+                  <button type="submit" class="btn btn-primary btn-pill"><i class="fas fa-save mr-1"></i> <%= action === 'add' ? 'Add Item' : 'Update Item' %></button>
+                </div>
+              </div>
+            </div>
+
+          </form>
+        </div>
+
+        <!-- small tips / notes card -->
+        <div class="admin-card mt-3">
+          <h6 class="mb-2">Tips</h6>
+          <ul class="mb-0">
+            <li>Use a high-quality cover image (recommended 1200x1600px).</li>
+            <li>If you upload a PDF, we will convert it into images for preview pages.</li>
+            <li>Keep prices and stock up to date to avoid order issues.</li>
+          </ul>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer (shared look) -->
+  <div class="container-fluid bg-secondary text-dark mt-5 pt-4">
+    <div class="row px-xl-5 pt-4">
+      <div class="col-lg-4 col-md-12 mb-4 pr-3 pr-xl-5">
+        <a href="/" class="text-decoration-none d-flex align-items-center">
+          <span class="brand-badge mr-3">E</span>
+          <h3 class="m-0">EBookStore</h3>
+        </a>
+        <p class="mt-3 text-muted">Curated ebooks for enthusiasts, students and professionals. High-quality content delivered instantly.</p>
+      </div>
+
+      <div class="col-lg-8 col-md-12">
+        <div class="row">
+          <div class="col-md-4 mb-4">
+            <h6 class="font-weight-bold text-dark mb-3">Quick Links</h6>
+            <div class="d-flex flex-column justify-content-start">
+              <a class="text-dark mb-2" href="/">Home</a>
+              <a class="text-dark mb-2" href="/admin/items">Products</a>
+              <a class="text-dark mb-2" href="/admin/orders">Orders</a>
+              <a class="text-dark" href="/contact">Contact Us</a>
+            </div>
+          </div>
+
+          <div class="col-md-4 mb-4">
+            <h6 class="font-weight-bold text-dark mb-3">Resources</h6>
+            <div class="d-flex flex-column justify-content-start">
+              <a class="text-dark mb-2" href="#">Blog</a>
+              <a class="text-dark mb-2" href="#">Guides</a>
+              <a class="text-dark mb-2" href="#">Privacy</a>
+            </div>
+          </div>
+
+          <div class="col-md-4 mb-4">
+            <h6 class="font-weight-bold text-dark mb-3">Newsletter</h6>
+            <form action="" class="">
+              <div class="form-group mb-2">
+                <input type="email" class="form-control" placeholder="Your Email" required />
+              </div>
+              <button class="btn btn-primary btn-pill btn-block" type="submit">Subscribe</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row border-top border-light mx-xl-5 py-3">
+      <div class="col-md-6 px-xl-0">
+        <p class="mb-md-0 text-center text-md-left text-dark small">&copy; <a class="text-dark font-weight-semi-bold" href="/">EBookStore</a>. All Rights Reserved.</p>
+      </div>
+      <div class="col-md-6 px-xl-0 text-center text-md-right">
+        <img class="img-fluid" src="/img/payments.png" alt="payments">
+      </div>
+    </div>
+  </div>
+
+  <!-- JS libs -->
+  <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
+  <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/js/bootstrap.bundle.min.js"></script>
+
+  <script>
+    function previewImage(input) {
+      const preview = document.getElementById('preview-container');
+      preview.innerHTML = '';
+
+      if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          const img = document.createElement('img');
+          img.src = e.target.result;
+          img.className = 'preview-image';
+          const p = document.createElement('p');
+          p.innerHTML = '<strong>New Image Preview:</strong>';
+          preview.appendChild(p);
+          preview.appendChild(img);
+        };
+        reader.readAsDataURL(input.files[0]);
+      }
+    }
+
+    // toggle pdf upload
+    document.getElementById('is_digital').addEventListener('change', function() {
+      const pdfGroup = document.getElementById('pdf-upload-group');
+      if (this.checked) {
+        pdfGroup.classList.remove('d-none');
+        document.getElementById('pdf').required = true;
+      } else {
+        pdfGroup.classList.add('d-none');
+        document.getElementById('pdf').required = false;
+      }
+    });
+  </script>
+</body>
+
+</html>

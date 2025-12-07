@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>PDF Viewer</title>
+
+  <!-- PDF.js -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.13.216/pdf.min.js"></script>
+  <script>
+    pdfjsLib.GlobalWorkerOptions.workerSrc =
+      "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.13.216/pdf.worker.min.js";
+  </script>
+
+  <style>
+    body { margin:0; background:#111; overflow:hidden; }
+    #canvas { width:100vw; height:100vh; display:block; margin:auto; }
+  </style>
+</head>
+<body>
+
+<canvas id="canvas"></canvas>
+
+<script>
+const pdfUrl = "/pdf/<%= productId %>.pdf"; // server renders productId
+
+async function renderPdf() {
+  try {
+    const loadingTask = pdfjsLib.getDocument({
+      url: pdfUrl,
+      withCredentials: true,     // <--- VERY IMPORTANT: send cookies
+      rangeChunkSize: 65536
+    });
+    const pdf = await loadingTask.promise;
+    const page = await pdf.getPage(1);
+    const viewport = page.getViewport({ scale: 1.5 });
+
+    const canvas = document.getElementById("canvas");
+    canvas.width = viewport.width;
+    canvas.height = viewport.height;
+    const ctx = canvas.getContext("2d");
+
+    await page.render({ canvasContext: ctx, viewport }).promise;
+  } catch (err) {
+    console.error("PDF render failed:", err);
+    document.body.innerHTML = "<div style='color:white;text-align:center;margin-top:40px'>Failed to load PDF: " + (err.message||err) + "</div>";
+  }
+}
+
+renderPdf();
+</script>
+
+
+</body>
+</html>

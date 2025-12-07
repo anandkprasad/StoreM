@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Secure PDF Viewer (improved)</title>
+  <style>
+    html,body { height:100%; margin:0; background:#222; color:#fff; }
+    .viewer {
+      width: min(1100px, 95%);
+      margin: 24px auto;
+      position: relative;
+    }
+    canvas.pdf-page {
+      display:block;
+      margin: 16px auto;
+      background:#fff;
+      box-shadow: 0 0 12px rgba(0,0,0,0.6);
+      max-width:100%;
+      height:auto; /* allow CSS scaling */
+    }
+    .watermark {
+      position:absolute;
+      top:40%;
+      left:50%;
+      transform: translate(-50%,-50%) rotate(-20deg);
+      font-size:2em;
+      color: rgba(0,0,0,0.12);
+      pointer-events:none;
+      z-index:20;
+      width:100%;
+      text-align:center;
+      user-select:none;
+      -webkit-user-select:none;
+    }
+    #error {
+      color: #ffa0a0;
+      text-align:center;
+      margin-top:12px;
+    }
+  </style>
+</head>
+<body>
+  <div class="viewer" id="viewer">
+    <div class="watermark" id="watermark"><%= user.name %> | <%= user.email %> | Order: <%= orderId %></div>
+    <div id="pages"></div>
+    <div id="error"></div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script>
+    // --- security / UX locks (you already had these) ---
+    document.addEventListener('contextmenu', e => e.preventDefault());
+    document.addEventListener('copy', e => e.preventDefault());
+    document.addEventListener('selectstart', e => e.preventDefault());
+    document.addEventListener('keydown', function(e) {
+      if (
+        e.key === "PrintScreen" ||
+        (e.ctrlKey && ["p","s","c","u"].includes(e.key.toLowerCase())) ||
+        e.key === "F12"
+      ) {
+        e.preventDefault();
+        // small non-blocking notice
+        try { window.navigator.vibrate && window.navigator.vibrate(50); } catch(e){}
+      }
+    });
+
+    // --- pdf.js setup ---
+    const pdfjsLib = window['pdfjs-dist/build/pdf'];
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+    // Replace this with the URL you provided (server-side templated)
+    const url = "<%= pdfUrl %>";
+    // Example actual link you posted:
+    // const url = "https://www.dropbox.com/scl/fi/fraizb3xwx6jcmd9307xq/693101df095ae9fd19fea697.pdf?rlkey=38p2ukkfqlrfcwfiv7itk4vob&raw=1";
+
+    const pagesContainer = document.getElementById('pages');
+    const errorBox = document.getElementById('error');
+
+    // Helper to detect if a response looks like a PDF
+    function looksLikePDF(headers, buffer) {
+      const ct = headers.get('content-type') || '';
+      if (ct.includes('pdf')) return true;
+      // fallback: check PDF file magic bytes '%PDF'
+      const start = new TextDecoder().decode(buffer.slice(0,4));
+      return start === '%PDF';
+    }
+
+    // Main: try fetch -> use binary data to load PDF (better errors & avoids HTML previews)
+    (async function loadPdf() {
+      errorBox.textContent = ''; pagesContainer.innerHTML = '';
+      try {
+        // Try fetching the URL as binary
+        const resp = await fetch(url, { method: 'GET', mode: 'cors' });
+        if (!resp.ok) {
+          throw new Error(`Network error: ${resp.status} ${resp.statusText}`);
+        }
+
+        const arrayBuffer = await resp.arrayBuffer();
+
+        // Check whether we actually got a PDF back
+        if (!looksLikePDF(resp.headers, arrayBuffer)) {
+          throw new Error('Server did not return a PDF (maybe returned HTML or blocked by CORS). Check the network response in DevTools.');
+        }
+
+        // Load pdf.js from an ArrayBuffer -- this avoids pdf.js trying to fetch the same URL itself
+        const loadingTask = pdfjsLib.getDocument({ data: new Uint8Array(arrayBuffer) });
+        const pdf = await loadingTask.promise;
+
+        // Render every page to its own canvas (simple)
+        for (let p = 1; p <= pdf.numPages; p++) {
+          const page = await pdf.getPage(p);
+          // Scale to fit viewer width while accounting for devicePixelRatio for crispness
+          const containerWidth = Math.min(document.querySelector('.viewer').clientWidth, 1100);
+          // compute viewport at scale=1 to get original width, then compute scale to fit
+          const vp1 = page.getViewport({ scale: 1 });
+          const scale = (containerWidth - 40) / vp1.width; // subtract padding margin
+          const viewport = page.getViewport({ scale });
+
+          // create high-DPI canvas
+          const canvas = document.createElement('canvas');
+          canvas.className = 'pdf-page';
+          const ctx = canvas.getContext('2d');
+
+          const dpr = window.devicePixelRatio || 1;
+          canvas.width = Math.floor(viewport.width * dpr);
+          canvas.height = Math.floor(viewport.height * dpr);
+          canvas.style.width = Math.floor(viewport.width) + 'px';
+          canvas.style.height = Math.floor(viewport.height) + 'px';
+
+          ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+          pagesContainer.appendChild(canvas);
+
+          await page.render({ canvasContext: ctx, viewport }).promise;
+        }
+
+      } catch (err) {
+        console.error('PDF load error:', err);
+        // Helpful user-facing hints:
+        if (err.message && err.message.toLowerCase().includes('cors')) {
+          errorBox.innerHTML = 'CORS error: the PDF host (Dropbox) blocked the request. <br/>Solutions: host the PDF on a server with CORS enabled, or proxy the file server-side.';
+        } else if (err.message && err.message.toLowerCase().includes('html')) {
+          errorBox.innerHTML = 'Server returned HTML instead of a PDF. Dropbox shared links sometimes return an HTML preview page — see suggestions below.';
+        } else {
+          errorBox.textContent = 'PDF load error: ' + err.message;
+        }
+        // show a short actionable list below the viewer
+        const help = document.createElement('div');
+        help.style.marginTop = '12px';
+        help.style.color = '#ddd';
+        help.innerHTML = `
+          <strong>Quick fixes</strong>
+          <ul>
+            <li>Open DevTools → Network and inspect the request for the PDF URL. Look at the response headers and body.</li>
+            <li>If you see a CORS error or the response is HTML, Dropbox is likely sending an HTML preview page not the raw PDF.</li>
+            <li>Workarounds: host the PDF where you control CORS (e.g. GitHub + jsDelivr), or fetch the file server-side (Node) and serve it from your domain.</li>
+            <li>Dropbox trick: try the direct-download form of the link (<code>dl=1</code>) or use the Dropbox API (content.dropboxapi.com) from your server to fetch the bytes and stream them to the browser.</li>
+          </ul>
+        `;
+        pagesContainer.appendChild(help);
+      }
+    })();
+  </script>
+</body>
+</html>
