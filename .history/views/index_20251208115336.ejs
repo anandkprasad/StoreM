@@ -1,0 +1,560 @@
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <title>EShopper - Bootstrap Shop Template</title>
+  <meta content="width=device-width, initial-scale=1.0" name="viewport">
+  <meta content="Free HTML Templates" name="keywords">
+  <meta content="Free HTML Templates" name="description">
+
+  <!-- Favicon -->
+  <link href="/img/favicon.ico" rel="icon">
+
+  <!-- Google Web Fonts -->
+  <link rel="preconnect" href="https://fonts.gstatic.com">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+
+  <!-- Font Awesome -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
+
+  <!-- Libraries Stylesheet -->
+  <link href="/lib/owlcarousel/assets/owl.carousel.min.css" rel="stylesheet">
+
+  <!-- Customized Bootstrap Stylesheet -->
+  <link href="/css/style.css" rel="stylesheet">
+
+  <!-- Inline dev CSS (keeps behaviour identical when copied) -->
+  <style>
+    :root{
+      --primary:#007bff;
+      --muted:#6c757d;
+      --card-radius:18px;
+      --shadow-strong: 0 8px 30px rgba(21,30,60,0.12);
+    }
+
+    body{font-family:'Poppins',system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial;}
+
+    /* Topbar */
+    .topbar{background-color: #013b69;}
+    .brand-badge{background:linear-gradient(135deg,var(--primary),#2aa0ff);border-radius:8px;padding:6px 10px;color:#fff;font-weight:700}
+
+    /* Navbar vertical (left) */
+    .navbar-vertical{min-height:280px}
+    .navbar-vertical .nav-link{padding:12px 20px;border-left:4px solid transparent}
+    .navbar-vertical .nav-link.active, .navbar-vertical .nav-link:hover{background:#f8f9fb;border-left-color:var(--primary)}
+
+    /* Product card */
+    .product-item{border-radius:var(--card-radius);overflow:hidden;box-shadow:var(--shadow-strong);transition:transform .22s ease, box-shadow .22s ease}
+    .product-item:hover{transform:translateY(-6px);box-shadow:0 18px 45px rgba(21,30,60,0.16)}
+    .product-img-container{background:linear-gradient(180deg,#fff,#fbfdff)}
+    .product-img{width:100%;height:100%;object-fit:cover;border-radius:12px}
+
+    .badge-price{background:linear-gradient(90deg,#28a745,#3ad17a);color:#fff;font-weight:600}
+
+    /* Footer small screens spacing */
+    @media (max-width:991px){
+      .navbar-vertical{display:none}
+      .brand-badge{display:inline-block}
+      .product-img-container{height:220px}
+    }
+
+    /* Improve form inputs */
+    input.form-control{border-radius:50px}
+    .btn-pill{border-radius:50px}
+
+    /* Back to top */
+    .back-to-top{position:fixed;right:20px;bottom:20px;border-radius:50%;width:46px;height:46px;display:flex;align-items:center;justify-content:center}
+
+    /* Ensure collapsed navbar sits above content on mobile */
+    @media (max-width: 991px) {
+      #navbarCollapse {
+        z-index: 1050;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <!-- Topbar Start -->
+  <div class="container-fluid topbar py-3">
+    <div class="row align-items-center px-xl-5">
+      <div class="col-lg-3 col-8 d-flex align-items-center">
+        <a href="/" class="text-decoration-none d-flex align-items-center">
+          <div>
+            <img style="margin-left: 32px;"
+            src="/logo.png"
+            srcset="/logo.png 2x"
+            alt="Karan Coaching Centre"
+            width="125" height="75"
+            loading="eager"
+          /> 
+          </div>
+        </a>
+      </div>
+      <div class="col-lg-6 col-12 mt-2 mt-lg-0">
+        <form class="d-flex" action="/search" method="GET" role="search">
+          <div class="input-group w-100">
+            <input type="search" name="q" class="form-control" placeholder="Search for products, authors, ISBN..." aria-label="Search">
+            <div class="input-group-append">
+              <button class="btn btn-primary btn-pill" type="submit"><i class="fas fa-search"></i></button>
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="col-lg-3 col-12 text-right mt-2 mt-lg-0 d-flex justify-content-end align-items-center">
+
+        <div class="d-none d-lg-block">
+          <% if (currentUser) { %>
+            <a href="/dashboard" class="btn btn-outline-primary btn-pill mr-2">Hi, <%= currentUser.username %></a>
+            <a href="/logout" class="btn btn-primary btn-pill">Logout</a>
+          <% } else { %>
+            <a href="/login" class="btn btn-outline-primary btn-pill mr-2">Login</a>
+            <a href="/signup" class="btn btn-primary btn-pill">Register</a>
+          <% } %>
+        </div>
+
+        <!-- Mobile: toggle the main navbar collapse so auth links inside navbar become visible on mobile -->
+        <div class="d-lg-none ml-2">
+          <button class="btn btn-outline-secondary" type="button" data-toggle="collapse" data-target="#navbarCollapse" aria-controls="navbarCollapse" aria-expanded="false" aria-label="Toggle menu">
+            <i class="fas fa-user"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- removed the old #mobile-auth block to avoid duplication -->
+    </div>
+  </div>
+  <!-- Topbar End -->
+
+ <!-- Main Navbar + Sidebar/Vertical -->
+<div class="container-fluid mb-5">
+  <div class="row px-xl-5">
+    <div class="col-lg-3 d-none d-lg-block">
+      <a class="btn shadow-none d-flex align-items-center justify-content-between bg-primary text-white w-100"
+         data-toggle="collapse" href="#navbar-vertical"
+         style="height: 65px; margin-top: -1px; padding: 0 30px;">
+        <h6 class="m-0">Ebook Categories <i class="fa fa-angle-down text-dark"></i></h6>
+      </a>
+
+      <nav class="collapse show navbar navbar-vertical navbar-light align-items-start p-0 border border-top-0 border-bottom-0" id="navbar-vertical">
+        <div class="navbar-nav w-100 overflow-hidden" style="height: 410px">
+          <a href="/" class="nav-item nav-link active">Home</a>
+
+          <% if (currentUser) { %>
+            <a href="/dashboard" class="nav-item nav-link">Welcome <%= currentUser.username %>!</a>
+            <a href="/logout" class="nav-item nav-link">Logout</a>
+          <% } else { %>
+            <a href="/login" class="nav-item nav-link">Login</a>
+            <a href="/signup" class="nav-item nav-link">Register</a>
+          <% } %>
+          <a href="/contact" class="nav-item nav-link">Contact Us</a>
+        </div>
+      </nav>
+    </div>
+
+    <div class="col-lg-9">
+      <nav class="navbar navbar-expand-lg bg-light navbar-light py-3 py-lg-0 px-0">
+        <a href="/" class="text-decoration-none d-block d-lg-none">
+          <h1 class="m-0 h4 font-weight-bold"><span class="text-primary">E</span>Shopper</h1>
+        </a>
+        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarCollapse" aria-controls="navbarCollapse" aria-expanded="false" aria-label="Toggle navigation">
+          <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <div class="collapse navbar-collapse" id="navbarCollapse">
+          <div class="navbar-nav mr-auto py-0">
+            <a href="/" class="nav-item nav-link active">Home</a>
+          </div>
+
+          <!-- Authentication links for mobile (visible only inside collapsed navbar) -->
+          <div class="navbar-nav ml-auto">
+            <% if (currentUser) { %>
+              <a href="/dashboard" class="nav-item nav-link d-lg-none">Hi, <%= currentUser.username %></a>
+              <a href="/logout" class="nav-item nav-link d-lg-none">Logout</a>
+            <% } else { %>
+              <a href="/login" class="nav-item nav-link d-lg-none">Login</a>
+              <a href="/signup" class="nav-item nav-link d-lg-none">Register</a>
+            <% } %>
+            <!-- optional: keep any extra links for small screens here -->
+          </div>
+        </div>
+      </nav>
+
+      <!-- Amazon-style product list -->
+      <div class="container-fluid pt-3" style="margin-top: 18px;">
+        <style>
+          /* Scoped: amazon-like product list */
+          .amazon-cards .product-row { padding: 14px 0; border-bottom: 1px solid rgba(0,0,0,0.06); }
+          .amazon-cards .product-card { display:flex; gap:20px; align-items:flex-start; width:100%; }
+          .amazon-cards .product-thumb { width:160px; min-width:160px; height:160px; background:#fff; display:flex; align-items:center; justify-content:center; border-radius:8px; box-shadow:0 6px 18px rgba(10,20,40,0.04); overflow:hidden; }
+          .amazon-cards .product-thumb img { width:100%; height:100%; object-fit:cover; }
+          .amazon-cards .product-info { flex:1; min-width:0; }
+          .amazon-cards h5 { margin:0 0 6px 0; font-size:1.02rem; font-weight:600; line-height:1.25; color:#212529; }
+          .amazon-cards .byline { font-size:0.9rem; color:#6c757d; margin-bottom:8px; display:block; }
+          .amazon-cards .desc { color:#495057; font-size:0.95rem; margin-bottom:10px; display:block; max-height:3.1rem; overflow:hidden; text-overflow:ellipsis; }
+          .amazon-cards .meta { display:flex; align-items:center; gap:12px; font-size:0.9rem; color:#6c757d; margin-bottom:8px; }
+          .amazon-cards .rating i { color:#f6b01e; margin-right:3px; font-size:0.95rem; }
+          .amazon-cards .price-wrap { display:flex; align-items:baseline; gap:10px; margin-bottom:6px; }
+          .amazon-cards .price { font-size:1.18rem; font-weight:700; color:#111; }
+          .amazon-cards .price-old { text-decoration:line-through; color:#9aa0a6; font-size:0.95rem; }
+          .amazon-cards .prime-badge { background:#232f3e; color:#fff; padding:4px 8px; border-radius:4px; font-size:0.82rem; font-weight:700; }
+          .amazon-cards .actions { display:flex; align-items:center; gap:10px; margin-left:auto; }
+          .amazon-cards .btn-buy { min-width:120px; }
+          @media (max-width: 991px) {
+            .amazon-cards .product-card { flex-direction:column; align-items:center; text-align:center; }
+            .amazon-cards .product-thumb { width:220px; min-width:220px; height:220px; margin-bottom:12px; }
+            .amazon-cards .actions { width:100%; justify-content:center; margin-top:8px; }
+            .amazon-cards .product-info { width:100%; }
+          }
+        </style>
+
+        <div class="amazon-cards">
+          <% featuredItems.forEach(function(item) { %>
+            <div class="row product-row">
+              <div class="col-12">
+                <div class="product-card">
+
+                  <!-- thumb -->
+                  <div class="product-thumb">
+                    <img loading="lazy" src="<%= item.image_url || '/img/product-1.jpg' %>" alt="<%= item.name %>">
+                  </div>
+
+                  <!-- info -->
+                  <div class="product-info">
+                    <h5><a href="/product/<%= item._id %>" class="text-dark" style="text-decoration:none;"><%= item.name %></a></h5>
+                    <% if (item.author) { %>
+                      <span class="byline">by <strong><%= item.author %></strong></span>
+                    <% } %>
+
+                    <div class="desc">
+                      <% let words = (item.description || '').split(/\s+/); %>
+                      <%= words.slice(0, 28).join(' ') %><%= words.length > 28 ? '...' : '' %>
+                    </div>
+
+                    <div class="meta">
+                      
+                    </div>
+
+                    <div class="price-wrap d-flex align-items-center">
+                      <div class="price-wrap-inner">
+                        <div class="price">₹ <%= item.price %></div>
+                        <% if (item.original_price && item.original_price > item.price) { %>
+                          <div class="price-old">₹ <%= item.original_price %></div>
+                        <% } %>
+                      </div>
+
+                      <% if (item.isPrime) { %>
+                        <div style="margin-left:12px;">
+                          <span class="prime-badge">PRIME</span>
+                        </div>
+                      <% } %>
+                    </div>
+                  </div>
+
+                  <!-- actions -->
+                  <div class="actions d-flex">
+
+                    <!-- push Buy to right with ml-auto when parent is flex (desktop) -->
+                    <div class="ml-auto d-none d-md-block">
+                      <a href="/product/<%= item._id %>" class="btn btn-primary btn-sm btn-buy">
+                        <i class="fas fa-shopping-cart mr-1"></i>Buy Now
+                      </a>
+                    </div>
+
+                    <!-- on small screens show full width buy -->
+                    <div class="d-block d-md-none w-100 mt-2">
+                      <a href="/product/<%= item._id %>" class="btn btn-primary btn-block">
+                        <i class="fas fa-shopping-cart mr-1"></i>Buy Now
+                      </a>
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+            </div>
+          <% }); %>
+        </div>
+      </div>
+      <!-- End amazon-style list -->
+
+    </div>
+  </div>
+</div>
+<!-- Navbar End -->
+
+
+  <!-- Featured Blocks -->
+  <div class="container-fluid pt-5">
+    <div class="row px-xl-5 pb-3">
+      <div class="col-lg-3 col-md-6 col-sm-12 pb-1">
+        <div class="d-flex align-items-center border mb-4 p-4 rounded" style="background:#fff;box-shadow:0 6px 20px rgba(21,30,60,0.04)">
+          <i class="fa fa-check text-primary mr-3 fa-2x"></i>
+          <div>
+            <h6 class="m-0 font-weight-bold">Quality Product</h6>
+            <small class="text-muted">Handpicked ebooks</small>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-lg-3 col-md-6 col-sm-12 pb-1">
+        <div class="d-flex align-items-center border mb-4 p-4 rounded" style="background:#fff;box-shadow:0 6px 20px rgba(21,30,60,0.04)">
+          <i class="fa fa-shipping-fast text-primary mr-3 fa-2x"></i>
+          <div>
+            <h6 class="m-0 font-weight-bold">Instant Delivery</h6>
+            <small class="text-muted">Download after purchase</small>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-lg-3 col-md-6 col-sm-12 pb-1">
+        <div class="d-flex align-items-center border mb-4 p-4 rounded" style="background:#fff;box-shadow:0 6px 20px rgba(21,30,60,0.04)">
+          <i class="fas fa-exchange-alt text-primary mr-3 fa-2x"></i>
+          <div>
+            <h6 class="m-0 font-weight-bold">14-Day Return</h6>
+            <small class="text-muted">Easy refunds & support</small>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-lg-3 col-md-6 col-sm-12 pb-1">
+        <div class="d-flex align-items-center border mb-4 p-4 rounded" style="background:#fff;box-shadow:0 6px 20px rgba(21,30,60,0.04)">
+          <i class="fa fa-phone-volume text-primary mr-3 fa-2x"></i>
+          <div>
+            <h6 class="m-0 font-weight-bold">24/7 Support</h6>
+            <small class="text-muted">We're here to help</small>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Subscribe -->
+  <div class="container-fluid bg-secondary my-5">
+    <div class="row justify-content-md-center py-5 px-xl-5">
+      <div class="col-md-6 col-12 py-5">
+        <div class="text-center mb-2 pb-2">
+          <h2 class="section-title px-5 mb-3"><span class="bg-secondary px-2">Stay Updated</span></h2>
+          <p class="text-muted">Get curated recommendations, new releases and exclusive discounts in your inbox.</p>
+        </div>
+        <% if (success && success.length > 0) { %>
+          <div class="alert alert-success"><%= success[0] %></div>
+        <% } %>
+        <% if (error && error.length > 0) { %>
+          <div class="alert alert-danger"><%= error[0] %></div>
+        <% } %>
+        <form action="/newsletter" method="POST" class="d-flex">
+          <div class="input-group mr-2">
+            <input type="text" name="name" class="form-control border-white p-3" placeholder="Your Name" aria-label="Name">
+          </div>
+          <div class="input-group mr-2">
+            <input type="email" name="email" class="form-control border-white p-3" placeholder="Email Goes Here" aria-label="Email" required>
+          </div>
+          <div class="input-group-append">
+            <button class="btn btn-primary btn-pill px-4" type="submit">Subscribe</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Products Grid — compact professional grid (3-up desktop, 2-up tablet, 1-up mobile) -->
+<div class="container-fluid pt-5 shop-grid-grid">
+  <div class="text-center mb-4">
+    <h2 class="section-title px-5"><span class="px-2">Shop Now</span></h2>
+  </div>
+
+  <style>
+    /* Scoped styles for the grid */
+    .shop-grid-grid .card { border-radius:14px; overflow:hidden; transition:transform .18s ease, box-shadow .18s ease; }
+    .shop-grid-grid .card:hover { transform:translateY(-6px); box-shadow:0 20px 40px rgba(10,20,40,0.08); }
+    .shop-grid-grid .product-img-wrap { height:220px; display:flex; align-items:center; justify-content:center; background:linear-gradient(180deg,#fff,#fbfdff); }
+    .shop-grid-grid .product-img { width:100%; height:100%; object-fit:cover; border-bottom-left-radius:0; border-bottom-right-radius:0; }
+    .shop-grid-grid .card-body { padding:16px; }
+    .shop-grid-grid .title { font-size:1rem; font-weight:700; color:#111827; margin-bottom:6px; line-height:1.2; min-height:2.4em; }
+    .shop-grid-grid .short-desc { color:#6b7280; font-size:.95rem; min-height:2.6em; overflow:hidden; margin-bottom:10px; }
+    .shop-grid-grid .meta-row { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:10px; }
+    .shop-grid-grid .rating i { color:#f6b01e; margin-right:2px; font-size:0.92rem; }
+    .shop-grid-grid .price { font-weight:800; font-size:1.08rem; color:#0f172a; }
+    .shop-grid-grid .price-old { text-decoration:line-through; color:#9aa0a6; font-size:.92rem; margin-left:8px; }
+    .shop-grid-grid .card-footer { background:transparent; border-top:0; padding:12px 16px; display:flex; align-items:center; gap:8px; }
+    .shop-grid-grid .btn-buy { min-width:140px; padding:10px 14px; border-radius:10px; font-weight:700; box-shadow:0 8px 24px rgba(15,40,80,0.06); }
+    .shop-grid-grid .btn-view { padding:8px 12px; border-radius:8px; }
+    .shop-grid-grid .badge-tag { background:#eef2ff; color:#27377b; font-weight:700; padding:6px 8px; border-radius:8px; font-size:.82rem; }
+
+    @media (min-width: 992px) {
+      /* Align buy right inside footer using flex and ml-auto on desktop */
+      .shop-grid-grid .card-footer { justify-content:flex-end; }
+      .shop-grid-grid .btn-view { margin-right:auto; }
+    }
+
+    @media (max-width: 991px) {
+      .shop-grid-grid .product-img { height:220px; width:100%; }
+      .shop-grid-grid .card-footer { flex-direction:column-reverse; align-items:stretch; gap:10px; }
+      .shop-grid-grid .btn-buy { width:100%; min-width:0; }
+      .shop-grid-grid .btn-view { width:100%; }
+      .shop-grid-grid .title { min-height:3.6em; }
+    }
+  </style>
+
+  <div class="row px-xl-5 pb-3">
+    <% (featuredItems.concat(otherItems)).forEach(function(item) { %>
+      <div class="col-lg-4 col-md-6 col-sm-12 mb-4 d-flex align-items-stretch">
+        <div class="card w-100 d-flex flex-column">
+
+          <!-- image -->
+          <div class="product-img-wrap">
+            <img loading="lazy" class="product-img" src="<%= item.image_url || '/img/product-1.jpg' %>" alt="<%= item.name %>">
+          </div>
+
+          <!-- body -->
+          <div class="card-body d-flex flex-column">
+            <a href="/product/<%= item._id %>" style="text-decoration:none;">
+              <div class="title"><%= item.name %></div>
+            </a>
+
+            <% if (item.author) { %>
+              <div class="mb-1" style="color:#6b7280;font-size:.92rem;">by <strong><%= item.author %></strong></div>
+            <% } %>
+
+            <div class="short-desc">
+              <% let words = (item.description || '').split(/\s+/); %>
+              <%= words.slice(0, 28).join(' ') %><%= words.length > 28 ? '...' : '' %>
+            </div>
+
+            <div class="meta-row mt-auto">
+              <div class="d-flex align-items-center">
+             
+              </div>
+
+              <div class="text-right">
+                <div class="price">₹ <%= item.price %>
+                  <% if (item.original_price && item.original_price > item.price) { %>
+                    <span class="price-old">₹ <%= item.original_price %></span>
+                  <% } %>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- footer actions -->
+          <div class="card-footer">
+
+            <!-- BIG Buy button (aligned right on desktop using ml-auto) -->
+            <a href="/product/<%= item._id %>" class="btn btn-primary btn-buy ml-auto" role="button" aria-label="Buy <%= item.name %> now">
+              <i class="fas fa-shopping-cart mr-2"></i>BUY NOW
+            </a>
+          </div>
+        </div>
+      </div>
+    <% }); %>
+  </div>
+</div>
+<!-- End Products Grid -->
+
+
+
+  <!-- Footer -->
+  <div class="container-fluid bg-secondary text-dark mt-5 pt-5">
+    <div class="row px-xl-5 pt-5">
+      <div class="col-lg-4 col-md-12 mb-5 pr-3 pr-xl-5">
+        <a href="/" class="text-decoration-none d-flex align-items-center">
+          <span class="brand-badge mr-3">E</span>
+          <h3 class="m-0">EBookStore</h3>
+        </a>
+        <p class="mt-3 text-muted">Curated ebooks for enthusiasts, students and professionals. High-quality content delivered instantly.</p>
+        <p class="mb-2 text-muted"><i class="fa fa-map-marker-alt text-primary mr-2"></i>123 Street, New York, USA</p>
+        <p class="mb-2 text-muted"><i class="fa fa-envelope text-primary mr-2"></i>info@example.com</p>
+        <p class="mb-0 text-muted"><i class="fa fa-phone-alt text-primary mr-2"></i>+012 345 67890</p>
+      </div>
+
+      <div class="col-lg-8 col-md-12">
+        <div class="row">
+          <div class="col-md-4 mb-5">
+            <h5 class="font-weight-bold text-dark mb-4">Quick Links</h5>
+            <div class="d-flex flex-column justify-content-start">
+              <a class="text-dark mb-2" href="/">Home</a>
+              <a class="text-dark mb-2" href="/shop">Our Shop</a>
+              <a class="text-dark mb-2" href="/detail">Shop Detail</a>
+              <a class="text-dark mb-2" href="/cart">Shopping Cart</a>
+              <a class="text-dark mb-2" href="/checkout">Checkout</a>
+              <a class="text-dark" href="/contact">Contact Us</a>
+            </div>
+          </div>
+
+          <div class="col-md-4 mb-5">
+            <h5 class="font-weight-bold text-dark mb-4">Resources</h5>
+            <div class="d-flex flex-column justify-content-start">
+              <a class="text-dark mb-2" href="#">Blog</a>
+              <a class="text-dark mb-2" href="#">Guides</a>
+              <a class="text-dark mb-2" href="#">Privacy</a>
+              <a class="text-dark mb-2" href="#">Terms</a>
+            </div>
+          </div>
+
+          <div class="col-md-4 mb-5">
+            <h5 class="font-weight-bold text-dark mb-4">Newsletter</h5>
+            <% if (success && success.length > 0) { %>
+              <div class="alert alert-success"><%= success[0] %></div>
+            <% } %>
+            <% if (error && error.length > 0) { %>
+              <div class="alert alert-danger"><%= error[0] %></div>
+            <% } %>
+            <form action="/newsletter" method="POST">
+              <div class="form-group">
+                <input type="text" name="name" class="form-control border-0 py-3" placeholder="Your Name" />
+              </div>
+              <div class="form-group">
+                <input type="email" name="email" class="form-control border-0 py-3" placeholder="Your Email" required />
+              </div>
+              <div>
+                <button class="btn btn-primary btn-block border-0 py-3 btn-pill" type="submit">Subscribe Now</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row border-top border-light mx-xl-5 py-4">
+      <div class="col-md-6 px-xl-0">
+        <p class="mb-md-0 text-center text-md-left text-dark small">
+          &copy; <a class="text-dark font-weight-semi-bold" href="#">Your Site Name</a>. All Rights Reserved.
+        </p>
+      </div>
+      <div class="col-md-6 px-xl-0 text-center text-md-right">
+        <img class="img-fluid" src="/img/payments.png" alt="payments">
+      </div>
+    </div>
+  </div>
+
+  <!-- Back to Top -->
+  <a href="#" class="btn btn-primary back-to-top" aria-label="Back to top"><i class="fa fa-angle-double-up"></i></a>
+
+
+  <!-- JavaScript Libraries -->
+  <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
+  <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/js/bootstrap.bundle.min.js"></script>
+  <script src="/lib/easing/easing.min.js"></script>
+  <script src="/lib/owlcarousel/owl.carousel.min.js"></script>
+
+  <!-- Contact Javascript File -->
+  <script src="/mail/jqBootstrapValidation.min.js"></script>
+  <script src="/mail/contact.js"></script>
+
+  <!-- Template Javascript -->
+  <script src="/js/main.js"></script>
+
+  <script>
+    // Simple back-to-top behaviour
+    $(function(){
+      $(window).scroll(function(){
+        if($(this).scrollTop()>200) $('.back-to-top').fadeIn(); else $('.back-to-top').fadeOut();
+      });
+      $('.back-to-top').click(function(e){e.preventDefault();$('html,body').animate({scrollTop:0},400)});
+    });
+  </script>
+</body>
+
+</html>

@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Contact Us · Karan Coaching Center</title>
+  <meta content="width=device-width, initial-scale=1.0" name="viewport">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet"/>
+  <link href="/lib/owlcarousel/assets/owl.carousel.min.css" rel="stylesheet">
+  <link href="/css/style.css" rel="stylesheet">
+  <style>
+    :root{
+      --kcc-primary: #013b69;
+      --kcc-accent: #2aa0ff;
+      --muted: #6c757d;
+    }
+
+    body{ font-family:'Poppins', system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; background: linear-gradient(135deg, rgba(1,59,105,0.03) 0%, rgba(42,160,255,0.02) 100%); margin:0; color:#222; }
+
+    /* Topbar */
+    .topbar{background:var(--kcc-primary); color:#fff;}
+    .topbar a { color: #fff; text-decoration: none; }
+    .topbar .brand-small { font-weight:700; color:#fff; font-size:16px; }
+
+    /* Contact card */
+    .contact-card { background:#fff; border-radius:14px; box-shadow:0 6px 20px rgba(10,20,40,0.06); padding:32px; max-width:680px; margin:24px auto; }
+    .contact-title { font-weight:700; font-size:1.6rem; margin-bottom:8px; color:var(--kcc-primary); }
+    .contact-info { color:var(--muted); margin-bottom:18px; }
+
+    .form-group label { font-weight:600; color:#444; }
+    .form-control, textarea.form-control { border-radius:8px; }
+    .btn-pill { border-radius:50px; }
+    .btn-kcc { background: linear-gradient(135deg, var(--kcc-accent) 0%, #1aa3ff 100%); color:var(--kcc-primary); font-weight:700; border:none; border-radius:8px; padding:10px 16px; }
+    .btn-kcc:hover { filter:brightness(.97); }
+
+    /* Sidebar vertical */
+    .navbar-vertical .nav-link { padding:12px 20px; border-left:4px solid transparent; }
+    .navbar-vertical .nav-link.active, .navbar-vertical .nav-link:hover { background:#f8f9fb; border-left-color:var(--kcc-primary); }
+
+    /* Small screens */
+    @media (max-width: 991px){
+      .contact-card{ margin:16px; }
+      .navbar-vertical{ display:none; }
+    }
+
+    .alert { border-radius:8px; }
+  </style>
+</head>
+<body>
+
+  <!-- Topbar Start -->
+  <div class="container-fluid topbar py-3">
+    <div class="row align-items-center px-xl-5">
+      <div class="col-lg-3 col-8 d-flex align-items-center">
+        <a href="/" class="text-decoration-none d-flex align-items-center">
+          <div style="display:flex;align-items:center;gap:12px;">
+            <img src="/logo.png" alt="Karan Coaching Centre" width="110" height="66" loading="lazy" style="object-fit:contain;">
+            <div style="line-height:1;">
+              <div class="brand-small">Karan Coaching Center</div>
+              <small style="color:rgba(255,255,255,0.9);font-size:12px;">Coaching • Mentoring • Results</small>
+            </div>
+          </div>
+        </a>
+      </div>
+
+      <div class="col-lg-6 col-12 mt-2 mt-lg-0">
+        <form class="d-flex" action="/search" method="GET" role="search">
+          <div class="input-group w-100">
+            <input type="search" name="q" class="form-control" placeholder="Search (books, courses, authors...)" aria-label="Search">
+            <div class="input-group-append">
+              <button class="btn btn-primary btn-pill" type="submit" style="background:var(--kcc-accent);border-color:var(--kcc-accent);"><i class="fas fa-search"></i></button>
+            </div>
+          </div>
+        </form>
+      </div>
+
+      <div class="col-lg-3 col-12 text-right mt-2 mt-lg-0 d-flex justify-content-end align-items-center">
+        <div class="d-none d-lg-block">
+          <% if (currentUser) { %>
+            <a href="/dashboard" class="btn btn-outline-light btn-pill mr-2">Hi, <%= currentUser.username %></a>
+            <a href="/logout" class="btn btn-light btn-pill" style="background:var(--kcc-accent);border-color:var(--kcc-accent);color:var(--kcc-primary)">Logout</a>
+          <% } else { %>
+            <a href="/login" class="btn btn-outline-light btn-pill mr-2">Login</a>
+            <a href="/signup" class="btn btn-light btn-pill" style="background:var(--kcc-accent);border-color:var(--kcc-accent);color:var(--kcc-primary)">Register</a>
+          <% } %>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- Topbar End -->
+
+  <div class="container-fluid mb-5">
+    <div class="row px-xl-5">
+      <div class="col-lg-3 d-none d-lg-block">
+        <!-- Sidebar styled like index.ejs vertical navbar -->
+        <a class="btn shadow-none d-flex align-items-center justify-content-between" data-toggle="collapse" href="#navbar-vertical" style="height:65px; margin-top:-1px; padding:0 24px; background:var(--kcc-primary); color:#fff;">
+          <h6 class="m-0">Quick Links <i class="fa fa-angle-down" style="color:#fff;"></i></h6>
+        </a>
+
+        <nav class="collapse show navbar navbar-vertical navbar-light align-items-start p-0 border border-top-0 border-bottom-0" id="navbar-vertical">
+          <div class="navbar-nav w-100 overflow-hidden" style="height:410px">
+            <a href="/" class="nav-item nav-link">Home</a>
+            <% if (currentUser) { %>
+              <a href="/dashboard" class="nav-item nav-link">Dashboard</a>
+              <a href="/logout" class="nav-item nav-link">Logout</a>
+            <% } else { %>
+              <a href="/login" class="nav-item nav-link">Login</a>
+              <a href="/signup" class="nav-item nav-link">Register</a>
+            <% } %>
+            <a href="/search" class="nav-item nav-link">Search</a>
+            <a href="/contact" class="nav-item nav-link active">Contact</a>
+          </div>
+        </nav>
+      </div>
+
+      <div class="col-lg-9">
+        <div class="contact-card">
+          <div class="contact-title">Contact Us</div>
+          <div class="contact-info">Have a question, feedback, or need help? Fill out the form below and our team will get back to you soon.</div>
+
+          <% if (success && success.length > 0) { %>
+            <div class="alert alert-success"><%= success[0] %></div>
+          <% } %>
+          <% if (error && error.length > 0) { %>
+            <div class="alert alert-danger"><%= error[0] %></div>
+          <% } %>
+
+          <form method="POST" action="/contact">
+            <div class="form-group">
+              <label for="name">Name *</label>
+              <input type="text" class="form-control" id="name" name="name" required>
+            </div>
+
+            <div class="form-group">
+              <label for="email">Email *</label>
+              <input type="email" class="form-control" id="email" name="email" required>
+            </div>
+
+            <div class="form-group">
+              <label for="message">Message *</label>
+              <textarea class="form-control" id="message" name="message" rows="4" required></textarea>
+            </div>
+
+            <button type="submit" class="btn btn-kcc btn-pill mt-2">Send Message</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="kcc-footer" role="contentinfo" style="background:var(--kcc-primary);color:#fff;padding-top:20px;padding-bottom:26px;">
+    <style>
+      .kcc-footer a { color:#fff; text-decoration:none; }
+      .kcc-footer a:hover { color:#e6f2ff; text-decoration:underline; }
+      .kcc-footer .payments-img { max-width:140px; opacity:.9; filter:grayscale(1) contrast(.95); }
+    </style>
+
+    <div class="container-fluid px-3 px-md-5">
+      <div class="row">
+        <div class="col-lg-4 col-md-12 mb-3">
+          <div style="background: rgba(255,255,255,0.03); border-radius:8px; padding:12px;">
+            <a href="/" class="d-flex align-items-center mb-2" aria-label="Karan Coaching Center home">
+              <img src="/logo.png" alt="Karan Coaching Center logo" width="88" height="52" style="object-fit:contain;margin-right:10px;" loading="lazy">
+              <div>
+                <span style="background: linear-gradient(135deg,var(--kcc-primary),var(--kcc-accent)); color:#fff; padding:6px 10px; border-radius:8px; font-weight:700; display:inline-block;">KCC</span>
+                <div style="margin-top:6px;font-weight:700;color:#fff;">Karan Coaching Center</div>
+              </div>
+            </a>
+            <p style="color: rgba(255,255,255,0.92); margin-top:10px;">Focused coaching for school & competitive exams — personalised classes, mock tests and mentoring.</p>
+            <div style="color: rgba(255,255,255,0.92); margin-top:10px;">
+              <div><i class="fa fa-map-marker-alt"></i> Patna / Delhi (Branches)</div>
+              <div><i class="fa fa-envelope"></i> <a href="mailto:info@karancoachingcentre.com">info@karancoachingcentre.com</a></div>
+              <div><i class="fa fa-phone-alt"></i> +91 98765 43210</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-lg-8 col-md-12">
+          <div class="row">
+            <div class="col-md-4 mb-3">
+              <div style="background: rgba(255,255,255,0.03); border-radius:8px; padding:12px;">
+                <h6 style="color:#fff;margin-bottom:8px;">Quick Links</h6>
+                <a class="d-block mb-1" href="/">Home</a>
+                <a class="d-block mb-1" href="/courses">Courses</a>
+                <a class="d-block" href="/contact">Contact</a>
+              </div>
+            </div>
+
+            <div class="col-md-4 mb-3">
+              <div style="background: rgba(255,255,255,0.03); border-radius:8px; padding:12px;">
+                <h6 style="color:#fff;margin-bottom:8px;">About</h6>
+                <p style="color: rgba(255,255,255,0.92); margin:0;">Experienced faculty, small batches, and results-driven training. Free demo classes for new students.</p>
+              </div>
+            </div>
+
+            <div class="col-md-4 mb-3">
+              <div style="background: rgba(255,255,255,0.03); border-radius:8px; padding:12px;">
+                <h6 style="color:#fff;margin-bottom:8px;">Newsletter</h6>
+                <form action="/newsletter" method="POST" aria-label="Subscribe">
+                  <div class="form-group mb-2"><input type="text" name="name" class="form-control" placeholder="Your Name" style="border-radius:6px;"></div>
+                  <div class="form-group mb-2"><input type="email" name="email" class="form-control" placeholder="Your Email" required style="border-radius:6px;"></div>
+                  <button class="btn" type="submit" style="background:var(--kcc-accent);color:var(--kcc-primary);font-weight:700;border-radius:6px;border:none;">Subscribe</button>
+                </form>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+      <div class="row align-items-center mt-3 pt-3" style="border-top:1px solid rgba(255,255,255,0.08);">
+        <div class="col-md-6 text-left" style="color:rgba(255,255,255,0.9);font-size:.9rem;">&copy; <span id="kccYear">2025</span> <strong>Karan Coaching Center</strong>. All Rights Reserved.</div>
+        <div class="col-md-6 text-right"><img src="/img/payments.png" alt="payments" class="payments-img" loading="lazy"></div>
+      </div>
+    </div>
+
+    <script> (function(){ var el=document.getElementById('kccYear'); if(el) el.textContent=new Date().getFullYear(); })(); </script>
+  </footer>
+
+  <!-- JS Libraries (keep same paths as original) -->
+  <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
+  <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/js/bootstrap.bundle.min.js"></script>
+  <script src="/lib/owlcarousel/owl.carousel.min.js"></script>
+</body>
+</html>

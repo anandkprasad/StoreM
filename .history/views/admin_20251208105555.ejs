@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Admin · Manage Items · EBookStore</title>
+  <meta content="width=device-width, initial-scale=1.0" name="viewport">
+
+  <!-- Fonts & icons -->
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet"/>
+
+  <!-- Site styles (keep same) -->
+  <link href="/lib/owlcarousel/assets/owl.carousel.min.css" rel="stylesheet">
+  <link href="/css/style.css" rel="stylesheet">
+
+  <style>
+    :root{
+      --accent-1: #667eea;
+      --accent-2: #764ba2;
+      --muted: #6c757d;
+      --card-radius: 12px;
+    }
+    body{ font-family:'Poppins', system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; background:#f8f9fa; }
+    .brand-badge{background:linear-gradient(135deg,var(--accent-1),#2aa0ff);border-radius:8px;padding:6px 10px;color:#fff;font-weight:700}
+    .topbar{background:linear-gradient(90deg,rgba(0,123,255,0.06),rgba(0,123,255,0.02));}
+    input.form-control{border-radius:50px}
+    .btn-pill{border-radius:50px}
+
+    /* Admin layout */
+    .admin-header { display:flex; align-items:center; justify-content:space-between; gap:16px; margin:18px 0; }
+    .admin-title { font-weight:800; font-size:1.25rem; margin:0; }
+    .muted { color:var(--muted); }
+
+    .card-admin { border-radius:14px; box-shadow:0 6px 20px rgba(10,20,40,0.04); overflow:hidden; background:#fff; }
+    .item-image { width:100px; height:80px; object-fit:cover; border-radius:6px; }
+
+    .table thead th { background: #fbfdff; border-bottom: 1px solid rgba(0,0,0,0.06); }
+    .btn-sm { padding:6px 10px; font-size:13px; }
+
+    @media (max-width: 991px) {
+      .item-image { width:72px; height:58px; }
+      .admin-header { flex-direction:column; align-items:flex-start; gap:10px; }
+    }
+  </style>
+</head>
+<body>
+  <!-- Topbar (index.ejs style) -->
+  <div class="container-fluid topbar py-3">
+    <div class="row align-items-center px-xl-5">
+      <div class="col-lg-3 col-8 d-flex align-items-center">
+        <a href="/" class="text-decoration-none d-flex align-items-center">
+          <span class="brand-badge mr-3">E</span>
+          <div>
+            <h1 class="m-0 h5 font-weight-bold">EBookStore</h1>
+            <small class="text-muted">Curated ebooks · instant access</small>
+          </div>
+        </a>
+      </div>
+
+      <div class="col-lg-6 col-12 mt-2 mt-lg-0">
+        <form class="d-flex" action="/search" method="GET" role="search">
+          <div class="input-group w-100">
+            <input type="search" name="q" class="form-control" placeholder="Search products, authors, ISBN..." aria-label="Search">
+            <div class="input-group-append">
+              <button class="btn btn-primary btn-pill" type="submit"><i class="fas fa-search"></i></button>
+            </div>
+          </div>
+        </form>
+      </div>
+
+      <div class="col-lg-3 col-12 text-right mt-2 mt-lg-0 d-flex justify-content-end align-items-center">
+        <div class="d-none d-lg-block">
+          <% if (currentUser) { %>
+            <a href="/dashboard" class="btn btn-outline-primary btn-pill mr-2">Hi, <%= currentUser.username || currentUser.name %></a>
+            <a href="/logout" class="btn btn-primary btn-pill">Logout</a>
+          <% } else { %>
+            <a href="/login" class="btn btn-outline-primary btn-pill mr-2">Login</a>
+            <a href="/signup" class="btn btn-primary btn-pill">Register</a>
+          <% } %>
+        </div>
+
+        <div class="d-lg-none ml-2">
+          <button class="btn btn-outline-secondary" type="button" data-toggle="collapse" data-target="#navbarCollapse" aria-controls="navbarCollapse" aria-expanded="false" aria-label="Toggle menu">
+            <i class="fas fa-user"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main layout -->
+  <div class="container-fluid mb-5">
+    <div class="row px-xl-5">
+      <!-- vertical nav -->
+      <div class="col-lg-3 d-none d-lg-block">
+        <a class="btn shadow-none d-flex align-items-center justify-content-between bg-primary text-white w-100"
+           data-toggle="collapse" href="#navbar-vertical"
+           style="height: 65px; margin-top: -1px; padding: 0 30px;">
+          <h6 class="m-0">Ebook Categories <i class="fa fa-angle-down text-dark"></i></h6>
+        </a>
+
+        <nav class="collapse show navbar navbar-vertical navbar-light align-items-start p-0 border border-top-0 border-bottom-0" id="navbar-vertical">
+          <div class="navbar-nav w-100">
+            <a href="/" class="nav-item nav-link">Home</a>
+            <a href="/admin" class="nav-item nav-link active">Admin</a>
+            <a href="/contact" class="nav-item nav-link">Contact Us</a>
+          </div>
+        </nav>
+      </div>
+
+      <div class="col-lg-9">
+        <!-- mobile-friendly top nav -->
+        <nav class="navbar navbar-expand-lg bg-light navbar-light py-3 py-lg-0 px-0 mb-3">
+          <a href="/" class="text-decoration-none d-block d-lg-none">
+            <h1 class="m-0 h4 font-weight-bold"><span class="text-primary">E</span>BookStore</h1>
+          </a>
+          <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarCollapse" aria-controls="navbarCollapse" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+          </button>
+
+          <div class="collapse navbar-collapse" id="navbarCollapse">
+            <div class="navbar-nav mr-auto py-0">
+              <a href="/" class="nav-item nav-link">Home</a>
+
+              <a href="/admin/contacts" class="nav-item nav-link">View Contacts</a>
+            </div>
+            <div class="navbar-nav ml-auto">
+              <% if (currentUser) { %>
+                <a href="/dashboard" class="nav-item nav-link d-lg-none">Hi, <%= currentUser.username || currentUser.name %></a>
+                <a href="/logout" class="nav-item nav-link d-lg-none">Logout</a>
+              <% } else { %>
+                <a href="/login" class="nav-item nav-link d-lg-none">Login</a>
+                <a href="/signup" class="nav-item nav-link d-lg-none">Register</a>
+              <% } %>
+            </div>
+          </div>
+        </nav>
+
+        <!-- Admin content -->
+        <div class="card-admin p-4 mb-4">
+               <!-- Order Analytics (styled + chart + summaries) -->
+<% if (typeof orderAnalytics !== 'undefined') { %>
+  <div class="card-admin p-4 mb-4" style="background:#f7f8fa;">
+    <div class="d-flex align-items-start justify-content-between mb-3">
+      <div>
+        <h3 class="mb-1">Order Analytics</h3>
+        <div class="muted">Overview of recent orders and product-level revenue & cost</div>
+      </div>
+      <div class="text-right">
+        <div style="font-size:0.95rem;color:#333;"><strong>Total orders:</strong> <%= orderAnalytics.totalOrders || (orderAnalytics.orders && orderAnalytics.orders.length) || 0 %></div>
+        <div style="font-size:0.95rem;color:#333;"><strong>Unique customers:</strong> <%= orderAnalytics.uniqueCustomers || '—' %></div>
+      </div>
+    </div>
+
+    <div class="row">
+      <!-- Chart column -->
+      <div class="col-lg-8 mb-3">
+        <div style="background:#fff;border-radius:12px;padding:12px;box-shadow:0 6px 18px rgba(10,20,40,0.04);">
+          <canvas id="ordersChart" height="260" aria-label="Revenue vs Cost per product chart"></canvas>
+        </div>
+      </div>
+
+      <!-- Summary column -->
+      <div class="col-lg-4">
+        <div style="background:#fff;border-radius:12px;padding:12px;box-shadow:0 6px 18px rgba(10,20,40,0.04);">
+          <h5 class="mb-2">Totals</h5>
+          <div class="mb-3">
+            <div class="d-flex justify-content-between">
+              <div class="muted">Total Revenue</div>
+              <div><strong id="totalRevenue">₹ <%= orderAnalytics.totalRevenue ? orderAnalytics.totalRevenue.toFixed(2) : 0 %></strong></div>
+            </div>
+            <div class="d-flex justify-content-between mt-1">
+              <div class="muted">Total Cost</div>
+              <div><strong id="totalCost">₹ <%= orderAnalytics.totalCost ? orderAnalytics.totalCost.toFixed(2) : 0 %></strong></div>
+            </div>
+            <div class="d-flex justify-content-between mt-1">
+              <div class="muted">Gross Profit</div>
+              <div><strong id="grossProfit">₹ <%= orderAnalytics.grossProfit ? orderAnalytics.grossProfit.toFixed(2) : 0 %></strong></div>
+            </div>
+          </div>
+
+          <h6 class="mb-2">Top products</h6>
+          <div id="topProducts" style="max-height:300px;overflow:auto;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Raw table (optional) -->
+    <div class="table-responsive mt-4">
+      <table class="table table-bordered table-sm">
+        <thead>
+          <tr>
+            <th>User</th>
+            <th>Email</th>
+            <th>Order ID</th>
+            <th>Product</th>
+            <th>Amount</th>
+            <th>Cost</th>
+            <th>Date</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% (orderAnalytics.orders || []).forEach(function(order) { %>
+            <tr>
+              <td><%= order.userName || order.user || '—' %></td>
+              <td><%= order.userEmail || order.email || '—' %></td>
+              <td><%= order._id || order.orderId || '—' %></td>
+              <td><%= order.productName || (order.product && order.product.name) || '—' %></td>
+              <td>₹ <%= (order.amount || order.total || order.price || (order.product && order.product.price) || 0) %></td>
+              <td>₹ <%= (order.cost || order.productCost || (order.product && order.product.cost) || 0) %></td>
+              <td><%= order.date || order.createdAt || '—' %></td>
+            </tr>
+          <% }); %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <script id="orders-data" type="application/json">
+  <%- JSON.stringify(orderAnalytics.orders || []) %>
+</script>
+
+
+  <!-- Chart.js (CDN) and aggregation script -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+    (function(){
+      // server-side data (safe JSON)
+   
+        const orders = JSON.parse(document.getElementById("orders-data").textContent);
+
+
+      // Aggregate per product
+      const productMap = {}; // name -> { revenue, cost, count }
+      let totalRevenue = 0;
+      let totalCost = 0;
+
+      orders.forEach(o => {
+        const name = (o.productName || (o.product && o.product.name) || 'Unknown Product').toString();
+        // fallbacks for revenue and cost
+        const revenue = Number(o.amount || o.total || o.price || (o.product && o.product.price) || 0) || 0;
+        const cost = Number(o.cost || o.productCost || (o.product && o.product.cost) || 0) || 0;
+
+        totalRevenue += revenue;
+        totalCost += cost;
+
+        if (!productMap[name]) productMap[name] = { revenue: 0, cost: 0, count: 0 };
+        productMap[name].revenue += revenue;
+        productMap[name].cost += cost;
+        productMap[name].count += 1;
+      });
+
+      // Prepare arrays for chart (sorted by revenue desc)
+      const products = Object.keys(productMap).map(name => ({ name, ...productMap[name] }));
+      products.sort((a,b) => b.revenue - a.revenue);
+
+      const labels = products.map(p => p.name);
+      const revenueData = products.map(p => Number(p.revenue.toFixed(2)));
+      const costData = products.map(p => Number(p.cost.toFixed(2)));
+
+      // Fill top products list
+      const topProductsEl = document.getElementById('topProducts');
+      if (products.length === 0) {
+        topProductsEl.innerHTML = '<div class="muted small">No product sales yet.</div>';
+      } else {
+        topProductsEl.innerHTML = products.slice(0,8).map(p => {
+          const profit = p.revenue - p.cost;
+          return '<div style="padding:6px 0;border-bottom:1px solid #f1f4fb;">' +
+            '<div style="font-weight:700;">' + p.name + '</div>' +
+            '<div class="muted small">Sold: ' + p.count + ' — Revenue: ₹ ' + p.revenue.toFixed(2) + ' — Cost: ₹ ' + p.cost.toFixed(2) + ' — Profit: ₹ ' + profit.toFixed(2) + '</div>' +
+            '</div>';
+        }).join('');
+      }
+
+      // Populate totals
+      document.getElementById('totalRevenue').textContent = '₹ ' + totalRevenue.toFixed(2);
+      document.getElementById('totalCost').textContent = '₹ ' + totalCost.toFixed(2);
+      document.getElementById('grossProfit').textContent = '₹ ' + (totalRevenue - totalCost).toFixed(2);
+
+      // Render Chart.js — revenue vs cost per product (stacked bars disabled, two bars)
+      const ctx = document.getElementById('ordersChart').getContext('2d');
+      // destroy existing chart if re-rendering
+      if (window._ordersChart) { window._ordersChart.destroy(); }
+
+      window._ordersChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [
+            {
+              label: 'Revenue',
+              data: revenueData,
+              backgroundColor: 'rgba(102,126,234,0.85)',
+              borderRadius: 6,
+            },
+            {
+              label: 'Cost',
+              data: costData,
+              backgroundColor: 'rgba(118,75,162,0.65)',
+              borderRadius: 6,
+            }
+          ]
+        },
+        options: {
+          maintainAspectRatio: false,
+          responsive: true,
+          interaction: { mode: 'index', intersect: false },
+          plugins: {
+            legend: { position: 'top' },
+            tooltip: {
+              callbacks: {
+                label: function(ctx) {
+                  return ctx.dataset.label + ': ₹ ' + Number(ctx.parsed.y || ctx.parsed).toFixed(2);
+                }
+              }
+            }
+          },
+          scales: {
+            x: {
+              ticks: { maxRotation: 40, minRotation: 0 },
+              grid: { display: false }
+            },
+            y: {
+              beginAtZero: true,
+              ticks: {
+                callback: function(value) { return '₹ ' + Number(value).toFixed(0); }
+              }
+            }
+          }
+        }
+      });
+    })();
+  </script>
+<% } %>
+
+          <div class="admin-header">
+            <div>
+              <h2 class="admin-title">Manage Store Items</h2>
+              <div class="muted">Add, edit or remove ebooks from your store</div>
+            </div>
+
+            <div style="display:flex;gap:12px;align-items:center;">
+              <a href="/" class="btn btn-outline-secondary">Back to Store</a>
+              <a href="/admin/add" class="btn btn-primary">
+                <i class="fas fa-plus"></i> Add New Item
+              </a>
+            </div>
+          </div>
+
+        <% if (success && success.length > 0) { %>
+            <div class="alert alert-success"><%= success[0] %></div>
+        <% } %>
+
+        <% if (error && error.length > 0) { %>
+            <div class="alert alert-danger"><%= error[0] %></div>
+        <% } %>
+
+
+          <% if (!items || items.length === 0) { %>
+            <div class="alert alert-info">No items found. <a href="/admin/add">Add your first item</a></div>
+          <% } else { %>
+            <div class="table-responsive">
+              <table class="table table-hover align-middle">
+                <thead>
+                  <tr>
+                    <th style="width:120px">Image</th>
+                    <th>Name</th>
+                    <th style="max-width:34%">Description</th>
+                    <th style="width:110px">Price</th>
+                    <th style="width:220px">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <% items.forEach(function(item) { %>
+                    <tr>
+                      <td>
+                        <% if (item.image_url) { %>
+                          <img src="<%= item.image_url %>" alt="<%= item.name %>" class="item-image">
+                        <% } else { %>
+                          <div class="text-muted">No image</div>
+                        <% } %>
+                      </td>
+                      <td>
+                        <strong><%= item.name %></strong>
+                        <% if (item.category) { %>
+                          <div class="muted small"><%= item.category %></div>
+                        <% } %>
+                      </td>
+                      <td style="max-width:420px;">
+                        <%= (item.description || '').length > 160 ? (item.description.substring(0,160) + '...') : (item.description || '-') %>
+                      </td>
+                      <td>
+                        <strong>₹ <%= Number(item.price).toFixed(2) %></strong>
+                      </td>
+                      <td>
+                        <a href="/admin/edit/<%= item._id %>" class="btn btn-sm btn-outline-warning">
+                          <i class="fas fa-edit"></i> Edit
+                        </a>
+
+                        <form action="/admin/delete/<%= item._id %>" method="GET" style="display:inline;" onsubmit="return confirm('Delete this item? This action cannot be undone.')">
+                          <button type="submit" class="btn btn-sm btn-outline-danger">
+                            <i class="fas fa-trash"></i> Delete
+                          </button>
+                        </form>
+
+                        <a href="/product/<%= item._id %>" class="btn btn-sm btn-outline-primary" target="_blank" rel="noopener">
+                          <i class="fas fa-eye"></i> View
+                        </a>
+                      </td>
+                    </tr>
+                  <% }); %>
+                </tbody>
+              </table>
+            </div>
+          <% } %>
+        </div>
+
+        <!-- small help / tip -->
+        <div class="muted small mb-5">Tip: Click <strong>Edit</strong> to update file links (PDF/ePub), categories, or set items as <em>digital</em> for instant delivery.</div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer (light) -->
+  <div class="container-fluid bg-secondary text-dark mt-5 pt-5">
+    <div class="row px-xl-5 pt-5">
+      <div class="col-lg-4 col-md-12 mb-5 pr-3 pr-xl-5">
+        <a href="/" class="text-decoration-none d-flex align-items-center">
+          <span class="brand-badge mr-3">E</span>
+          <h3 class="m-0">EBookStore</h3>
+        </a>
+        <p class="mt-3 text-muted">Curated ebooks for enthusiasts, students and professionals. High-quality content delivered instantly.</p>
+      </div>
+      <div class="col-lg-8 col-md-12">
+        <div class="row">
+          <div class="col-md-4 mb-5">
+            <h5 class="font-weight-bold text-dark mb-4">Quick Links</h5>
+            <div class="d-flex flex-column justify-content-start">
+              <a class="text-dark mb-2" href="/">Home</a>
+              <a class="text-dark mb-2" href="/contact">Contact Us</a>
+            </div>
+          </div>
+          <div class="col-md-4 mb-5">
+            <h5 class="font-weight-bold text-dark mb-4">Resources</h5>
+            <div class="d-flex flex-column justify-content-start">
+              <a class="text-dark mb-2" href="#">Blog</a>
+              <a class="text-dark mb-2" href="#">Guides</a>
+            </div>
+          </div>
+          <div class="col-md-4 mb-5">
+            <h5 class="font-weight-bold text-dark mb-4">Newsletter</h5>
+            <form action="">
+              <div class="form-group">
+                <input type="text" class="form-control border-0 py-3" placeholder="Your Name" required />
+              </div>
+              <div class="form-group">
+                <input type="email" class="form-control border-0 py-3" placeholder="Your Email" required />
+              </div>
+              <div>
+                <button class="btn btn-primary btn-block border-0 py-3 btn-pill" type="submit">Subscribe Now</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row border-top border-light mx-xl-5 py-4">
+      <div class="col-md-6 px-xl-0">
+        <p class="mb-md-0 text-center text-md-left text-dark small">
+          &copy; <a class="text-dark font-weight-semi-bold" href="#">EBookStore</a>. All Rights Reserved.
+        </p>
+      </div>
+      <div class="col-md-6 px-xl-0 text-center text-md-right">
+        <img class="img-fluid" src="/img/payments.png" alt="payments">
+      </div>
+    </div>
+  </div>
+
+  <!-- JS -->
+  <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
+  <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

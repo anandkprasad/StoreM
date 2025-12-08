@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Karan Coaching Centre — Logo SVG</title>
+
+  <!-- Google Font similar to the logo's condensed bold -->
+  <link href="https://fonts.googleapis.com/css2?family=Anton&display=swap" rel="stylesheet">
+
+  <style>
+    :root{
+      --bg: #063a57;      /* deep blue background */
+      --orange: #f47d20;  /* bright orange for K & C */
+      --white: #ffffff;
+      --logo-size: 900px;
+    }
+
+    html,body {
+      height:100%;
+      margin:0;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      background:var(--bg);
+      font-family: "Anton", Arial, sans-serif;
+    }
+
+    /* Container to center and scale the logo */
+    .logo-wrap{
+      width:var(--logo-size);
+      max-width:92vmin;
+      aspect-ratio:1/1;
+    }
+
+    svg { display:block; width:100%; height:100%; }
+
+    /* small text under the initials */
+    .subtext {
+      font-family: "Anton", Arial, sans-serif;
+      font-size:58px;
+      fill:var(--white);
+      letter-spacing:2px;
+    }
+
+    /* main initials style */
+    .initials { fill: var(--orange); font-family: "Anton", Arial, sans-serif; font-weight:700; }
+
+    /* ladder/person/trophy are white */
+    .mark { fill: var(--white); stroke: var(--white); stroke-linecap:round; stroke-linejoin:round; }
+    .ladder-line { stroke-width:18; stroke:var(--white); fill:none; }
+    .ladder-step { stroke-width:14; stroke:var(--white); stroke-linecap:round; }
+    .person { fill:var(--white); stroke:none; }
+    .trophy { fill:var(--white); stroke:none; }
+  </style>
+</head>
+<body>
+  <div class="logo-wrap">
+    <!-- Canvas is 1024x1024 to match your image -->
+    <svg viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Karan Coaching Centre logo">
+
+      <!-- background rectangle (matches page bg so edges blend) -->
+      <rect x="0" y="0" width="1024" height="1024" fill="none" />
+
+      <!-- Large initials "K C C" using text so it is crisp and font-matched -->
+      <!-- K at left -->
+      <text class="initials" x="40" y="430" font-size="520">K</text>
+
+      <!-- two C's placed to the right -->
+      <text class="initials" x="360" y="430" font-size="520">C</text>
+      <text class="initials" x="680" y="430" font-size="520">C</text>
+
+      <!-- Ladder crossing the K: build as a rotated group -->
+      <g transform="translate(265,165) rotate(-18 170 170)">
+
+        <!-- two long rails -->
+        <line x1="60" y1="30" x2="360" y2="490" class="ladder-line"></line>
+        <line x1="115" y1="30" x2="415" y2="490" class="ladder-line"></line>
+
+        <!-- ladder steps (rungs) -->
+        <!-- draw 6 steps evenly spaced -->
+        <g stroke-linecap="round" class="ladder-step">
+          <line x1="85" y1="100" x2="390" y2="100"></line>
+          <line x1="75" y1="180" x2="380" y2="180"></line>
+          <line x1="70" y1="260" x2="370" y2="260"></line>
+          <line x1="70" y1="340" x2="370" y2="340"></line>
+          <line x1="75" y1="420" x2="380" y2="420"></line>
+          <line x1="85" y1="500" x2="390" y2="500"></line>
+        </g>
+
+        <!-- bottom cross (the K's foot crossing) -->
+        <line x1="-10" y1="520" x2="120" y2="520" stroke-width="20" stroke="#ffffff" stroke-linecap="round"></line>
+      </g>
+
+      <!-- small stylized person on the ladder -->
+      <!-- We'll position the person inside the rotated ladder coordinate system by computing location -->
+      <!-- Person group is placed and rotated to match ladder angle (-18deg) -->
+      <g transform="translate(265,165) rotate(-18 170 170)">
+        <!-- scale down the person relative to ladder -->
+        <g transform="translate(230,170) scale(0.85)">
+          <!-- head -->
+          <circle class="person" cx="0" cy="-40" r="28"></circle>
+          <!-- body / torso -->
+          <path class="person" d="M-12,-12 Q0,8 18,36 L6,48 Q-6,28 -22,10 Z"></path>
+          <!-- arm reaching up -->
+          <path class="person" d="M12,-6 Q28,-20 44,-46" stroke="#ffffff" stroke-width="10" fill="none" stroke-linecap="round"></path>
+        </g>
+      </g>
+
+      <!-- Trophy at the top of ladder -->
+      <!-- Place it matching ladder top in world coords -->
+      <g transform="translate(520,110) scale(1.0)">
+        <!-- base / stem -->
+        <path class="trophy" d="M-28,72 L28,72 L28,60 Q18,52 12,44 L-12,44 Q-18,52 -28,60 Z"></path>
+        <!-- cup -->
+        <path class="trophy" d="M-62,40 Q-62,0 -16,-2 L16,-2 Q62,0 62,40 Q62,68 28,68 L-28,68 Q-62,68 -62,40 Z"></path>
+        <!-- handles -->
+        <path class="trophy" d="M-62,16 Q-84,0 -84,-10 Q-74,-4 -62,6 Z"></path>
+        <path class="trophy" d="M62,16 Q84,0 84,-10 Q74,-4 62,6 Z"></path>
+        <!-- star on trophy -->
+        <polygon class="trophy" points="-8,22 0,6 8,22 24,22 10,34 16,52 0,40 -16,52 -10,34 -24,22"></polygon>
+      </g>
+
+      <!-- bottom subtitle: KARAN COACHING CENTRE -->
+      <text class="subtext" x="70" y="770" font-size="66">KARAN COACHING CENTRE</text>
+
+      <!-- Small touch: create a slight overlap so ladder appears in front of the K stem -->
+      <!-- We will clip parts of K by drawing a white rectangle along ladder path to simulate the ladder crossing visually -->
+      <!-- (This is optional: uncomment to simulate ladder cutting over the K) -->
+      <!--
+      <rect x="230" y="220" width="40" height="380" fill="#ffffff" transform="rotate(-18 250 420)" opacity="0.04"/>
+      -->
+    </svg>
+  </div>
+</body>
+</html>
