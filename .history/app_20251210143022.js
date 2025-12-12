@@ -139,18 +139,10 @@ app.get('/pdf/:id', async (req, res) => {
 
     // Fallback: content API stream
     const apiUrl = 'https://content.dropboxapi.com/2/files/download';
-    // Ensure we have a fresh access token
-    try {
-      if (!dropboxAccessToken) {
-        await refreshDropboxToken();
-      }
-    } catch (rtErr) {
-      console.error('[pdf proxy] Failed to refresh Dropbox token:', rtErr);
-    }
     const resp = await fetch(apiUrl, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${dropboxAccessToken}`,
+        'Authorization': `Bearer ${DROPBOX_ACCESS_TOKEN}`,
         'Dropbox-API-Arg': JSON.stringify({ path: dropboxPath })
       }
     });

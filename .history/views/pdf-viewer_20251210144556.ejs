@@ -15,9 +15,8 @@
   </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script>
-    // PRODUCT_ID and optional VIEW_TOKEN (short-lived) — VIEW_TOKEN is injected by the server when available
+    // Only PRODUCT_ID is needed now; no VIEW_TOKEN or watermark keys
     const PRODUCT_ID = "<%= (typeof productId !== 'undefined' ? productId : (product && product._id) ? product._id : '') %>";
-    const VIEW_TOKEN = "<%= (typeof token !== 'undefined' ? token : '') %>";
   </script>
 </head>
 <body>
@@ -57,8 +56,7 @@
 
     async function fetchPdfArrayBuffer(){
       if (!PRODUCT_ID) throw new Error('PRODUCT_ID not provided');
-      const tokenParam = VIEW_TOKEN ? `?token=${encodeURIComponent(VIEW_TOKEN)}` : '';
-      const url = `/pdf/${PRODUCT_ID}${tokenParam}`;
+      const url = `/pdf/${PRODUCT_ID}`;
       const resp = await fetch(url, { method: 'GET', credentials: 'same-origin' });
       if (!resp.ok) throw new Error('Failed to fetch PDF: ' + resp.status + ' ' + resp.statusText);
       return await resp.arrayBuffer();

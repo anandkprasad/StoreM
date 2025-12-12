@@ -66,12 +66,8 @@ var app = express();
 // Secure proxy: serves /pdf/:productId.pdf only if logged-in user owns the order for that product
 app.get('/pdf/:id', async (req, res) => {
   try {
-    // Allow either a valid view token or a logged-in user session
-    const token = req.query.token;
-    let tokenData = null;
-    if (token) tokenData = validateViewToken(token);
-
-    if (!tokenData && !req.user) return res.status(401).send('Login required');
+    // enforce login (session cookie must be present)
+    if (!req.user) return res.status(401).send('Login required');
 
     const raw = req.params.id || '';
     const base = raw.replace(/\.pdf$/i, '');
@@ -84,37 +80,20 @@ app.get('/pdf/:id', async (req, res) => {
       return res.status(400).send('Invalid file id');
     }
 
-    // Authorization: if token provided, validate token refers to an order that contains this product
-    if (tokenData) {
-      try {
-        // Find the user/order referenced by token and confirm the order contains this product
-        const tokenUser = await User.findOne({ _id: tokenData.userId }).lean();
-        if (!tokenUser) return res.status(403).send('Forbidden');
-        const theOrder = (tokenUser.orders || []).find(o => String(o._id) === String(tokenData.orderId));
-        if (!theOrder) return res.status(403).send('Forbidden');
-        if (String(theOrder.product) !== String(base)) {
-          console.warn('[pdf proxy] Token order/product mismatch', { orderId: tokenData.orderId, productRequested: base, productInOrder: theOrder.product });
-          return res.status(403).send('Forbidden');
-        }
-        // authorized via token
-      } catch (e) {
-        console.error('[pdf proxy] Token authorization error', e);
-        return res.status(403).send('Forbidden');
-      }
-    } else {
-      // session-based authorization: Ensure the logged-in user actually purchased / owns this product
-      const userId = req.user._id;
-      const user = await User.findById(userId).lean(); // fresh copy from DB
-      if (!user) return res.status(401).send('User session invalid');
+    // Ensure the logged-in user actually purchased / owns this product
+    // We'll check user's orders for a matching product ObjectId
+    const userId = req.user._id;
+    const user = await User.findById(userId).lean(); // fresh copy from DB
+    if (!user) return res.status(401).send('User session invalid');
 
-      const owns = (user.orders || []).some(o => {
-        return String(o.product) === String(base);
-      });
+    const owns = (user.orders || []).some(o => {
+      // o.product may be ObjectId or string — coerce both sides to string
+      return String(o.product) === String(base);
+    });
 
-      if (!owns) {
-        console.warn(`[pdf proxy] User ${userId} attempted to access product ${base} but does not own it`);
-        return res.status(403).send('Forbidden');
-      }
+    if (!owns) {
+      console.warn(`[pdf proxy] User ${userId} attempted to access product ${base} but does not own it`);
+      return res.status(403).send('Forbidden');
     }
 
     // At this point: allowed. Try to stream file from Dropbox.
@@ -128,7 +107,6 @@ app.get('/pdf/:id', async (req, res) => {
       if (maybeBinary) {
         const buffer = Buffer.isBuffer(maybeBinary) ? maybeBinary : Buffer.from(maybeBinary, 'binary');
         res.setHeader('Content-Type', 'application/pdf');
-        res.setHeader('Content-Disposition', `inline; filename="${filename}"`);
         res.setHeader('Content-Length', buffer.length);
         return res.send(buffer);
       }
@@ -139,18 +117,10 @@ app.get('/pdf/:id', async (req, res) => {
 
     // Fallback: content API stream
     const apiUrl = 'https://content.dropboxapi.com/2/files/download';
-    // Ensure we have a fresh access token
-    try {
-      if (!dropboxAccessToken) {
-        await refreshDropboxToken();
-      }
-    } catch (rtErr) {
-      console.error('[pdf proxy] Failed to refresh Dropbox token:', rtErr);
-    }
     const resp = await fetch(apiUrl, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${dropboxAccessToken}`,
+        'Authorization': `Bearer ${DROPBOX_ACCESS_TOKEN}`,
         'Dropbox-API-Arg': JSON.stringify({ path: dropboxPath })
       }
     });
@@ -164,7 +134,6 @@ app.get('/pdf/:id', async (req, res) => {
 
     // Stream the PDF to the client
     res.setHeader('Content-Type', resp.headers.get('content-type') || 'application/pdf');
-    res.setHeader('Content-Disposition', `inline; filename="${filename}"`);
     if (resp.headers.get('content-length')) res.setHeader('Content-Length', resp.headers.get('content-length'));
     // optional CORS header (not necessary for same-origin)
     res.setHeader('Access-Control-Allow-Origin', '*');
@@ -290,72 +259,6 @@ async function convertDropboxPdfToImagesLocal(pdfUrl, maxPages = 200, productId)
   }
 }
 
-// Convert entire Dropbox-hosted PDF into Cloudinary images (pages)
-// Returns array of page image URLs (Cloudinary secure urls)
-async function convertDropboxPdfToCloudinaryPages(dropboxPdfUrl, itemId, maxPages = 300) {
-  if (!dropboxPdfUrl) return [];
-  const srcUrl = normalizeDropboxUrlForFetch(dropboxPdfUrl);
-  console.log('[pdf-images] Starting conversion to Cloudinary pages for', itemId, 'src:', srcUrl);
-
-  const results = [];
-  let consecutiveFails = 0;
-  const failThreshold = 6; // stop after this many missing pages in a row
-
-  for (let p = 1; p <= maxPages; ++p) {
-    try {
-      const signed = generateSignedPageUrlForFetch(srcUrl, p, 300);
-      console.log(`[pdf-images] Fetch URL for page ${p}:`, signed);
-
-      // Upload the fetched page into Cloudinary to cache it and get a stable URL
-      const uploadResult = await new Promise((resolve) => {
-        cloudinary.uploader.upload(
-          signed,
-          {
-            folder: `store-pages/${itemId}`,
-            public_id: `page_${p}`,
-            resource_type: 'image',
-            type: 'fetch',
-            overwrite: false,
-            access_mode: 'authenticated'
-          },
-          (err, res) => {
-            if (err) {
-              console.warn(`[pdf-images] Cloudinary upload page ${p} error:`, err && err.message ? err.message : err);
-              // If page doesn't exist (404) Cloudinary may surface an error — treat as null
-              return resolve(null);
-            }
-            return resolve(res && res.secure_url ? res.secure_url : null);
-          }
-        );
-      });
-
-      if (uploadResult) {
-        console.log(`[pdf-images] Uploaded page ${p} ->`, uploadResult);
-        results.push(uploadResult);
-        consecutiveFails = 0;
-      } else {
-        console.log(`[pdf-images] Page ${p} appears missing (no upload result)`);
-        consecutiveFails++;
-        if (consecutiveFails >= failThreshold) {
-          console.log('[pdf-images] Stopping conversion after', consecutiveFails, 'consecutive missing pages');
-          break;
-        }
-      }
-
-      // small delay to avoid hitting remote rate limits
-      await new Promise(r => setTimeout(r, 250));
-    } catch (err) {
-      console.error('[pdf-images] Unexpected error while converting page', p, err);
-      consecutiveFails++;
-      if (consecutiveFails >= failThreshold) break;
-      await new Promise(r => setTimeout(r, 500));
-    }
-  }
-
-  console.log('[pdf-images] Conversion finished. pages:', results.length);
-  return results;
-}
-
 // Mongoose Connection
 if (!process.env.MONGODB_URI) {
   console.error('MONGODB_URI is not set in .env');
@@ -412,7 +315,6 @@ const ContactMessage = mongoose.model('ContactMessage', contactMessageSchema);
 // Note: Cloudinary converts PDF pages on-the-fly, so we'll use direct URL transformation
 // and optionally cache the result
 async function convertPDFPageToImage(pdfPublicId, pageNum, itemId) {
-  console.log('[PDF2IMG] Requested PDF page:', { pdfPublicId, pageNum, itemId });
   // Generate the transformed URL for this page
   const transformedUrl = cloudinary.url(pdfPublicId, {
     resource_type: 'image',
@@ -421,41 +323,35 @@ async function convertPDFPageToImage(pdfPublicId, pageNum, itemId) {
     quality: 'auto:good',
     dpr: 'auto'
   });
-  console.log('[PDF2IMG] Cloudinary transformedUrl:', transformedUrl);
 
   // Upload the transformed page as a cached image
-  let uploadResult;
-  try {
-    uploadResult = await new Promise((resolve, reject) => {
-      cloudinary.uploader.upload(
-        transformedUrl,
-        {
-          folder: `store-pages/${itemId}`,
-          public_id: `page_${pageNum}`,
-          resource_type: 'image',
-          type: 'fetch',
-          access_mode: 'authenticated',
-          overwrite: false
-        },
-        (error, result) => {
-          if (error) {
-            console.error('[PDF2IMG] Cloudinary upload error:', error);
-            if (error.http_code === 404 || (error.message && error.message.includes('404'))) {
-              resolve(null);
-            } else {
-              resolve(transformedUrl);
-            }
+  const uploadResult = await new Promise((resolve, reject) => {
+    cloudinary.uploader.upload(
+      transformedUrl,
+      {
+        folder: `store-pages/${itemId}`,
+        public_id: `page_${pageNum}`,
+        resource_type: 'image',
+        type: 'fetch',
+        access_mode: 'authenticated',
+        overwrite: false
+      },
+      (error, result) => {
+        if (error) {
+          // If upload fails, the page might not exist - return null
+          // But we can still use the transformed URL directly
+          if (error.http_code === 404 || error.message.includes('404')) {
+            resolve(null);
           } else {
-            console.log('[PDF2IMG] Cloudinary upload success:', result.secure_url);
-            resolve(result.secure_url);
+            // Return the transformed URL even if upload fails (on-the-fly conversion)
+            resolve(transformedUrl);
           }
+        } else {
+          resolve(result.secure_url);
         }
-      );
-    });
-  } catch (err) {
-    console.error('[PDF2IMG] Exception during Cloudinary upload:', err);
-    uploadResult = null;
-  }
+      }
+    );
+  });
 
   // Download the image to local out-pages directory if uploadResult is a URL
   if (uploadResult && typeof uploadResult === 'string' && uploadResult.startsWith('http')) {
@@ -464,14 +360,10 @@ async function convertPDFPageToImage(pdfPublicId, pageNum, itemId) {
     const fileName = `page-${String(pageNum).padStart(3, '0')}.jpg`;
     const outPath = path.join(productDir, fileName);
     try {
-      console.log('[PDF2IMG] Downloading image to local path:', outPath, 'from', uploadResult);
       await downloadToFile(uploadResult, outPath);
-      console.log('[PDF2IMG] Downloaded image to local path:', outPath);
     } catch (err) {
-      console.error('[PDF2IMG] Failed to download image from Cloudinary to local out-pages:', err);
+      console.error('Failed to download image from Cloudinary to local out-pages:', err);
     }
-  } else {
-    console.error('[PDF2IMG] No valid uploadResult to download:', uploadResult);
   }
   return uploadResult;
 }
@@ -818,6 +710,7 @@ app.post('/payment/success', isLoggedIn, async function(req, res) {
 // Secure Digital Product Viewer Routes
 app.get('/notes/:orderId', isLoggedIn, async function(req, res) {
   try {
+    console.log(`[notes/:orderId] Route entered for user=${req.user && req.user.username}, orderId=${req.params.orderId}`);
     // Find the order
     const order = req.user.orders.id(req.params.orderId);
     if (!order) {
@@ -842,6 +735,7 @@ app.get('/notes/:orderId', isLoggedIn, async function(req, res) {
     const outPagesDir = path.resolve(process.cwd(), 'out-pages');
     const productDir = path.join(outPagesDir, String(product._id));
     const firstPagePath = path.join(productDir, 'page-001.jpg');
+    console.log(`[notes/:orderId] Checking/triggering image conversion: pdf_url=${product.pdf_url}, page1 exists=${fs.existsSync(firstPagePath)}, productId=${product._id}`);
     // No eager conversion of all pages. Only generate requested page image on demand.
 
     // Generate access token
@@ -875,6 +769,7 @@ app.get('/notes/:orderId', isLoggedIn, async function(req, res) {
       const outPagesDir = path.resolve(process.cwd(), 'out-pages');
       const productDir = path.join(outPagesDir, String(product._id));
       const firstPagePath = path.join(productDir, 'page-001.jpg');
+      console.log(`[notes/:orderId/view] Checking/triggering image conversion: pdf_url=${product.pdf_url}, page1 exists=${fs.existsSync(firstPagePath)}, productId=${product._id}`);
       // No eager conversion of all pages. Only generate requested page image on demand.
       // Dropbox public URL is now used for viewer
       const viewToken = generateViewToken(
@@ -905,6 +800,7 @@ app.get('/search', async (req, res) => {
   let results = [];
   let recommended = [];
   if (query) {
+    // Simple text search on name and description
     results = await Item.find({
       $or: [
         { name: { $regex: query, $options: 'i' } },
@@ -922,7 +818,108 @@ app.get('/search', async (req, res) => {
   });
 });
 
+    // DEBUG: more verbose notes page image endpoint (temporary)
+app.get('/notes/:orderId/page/:pageNo/image', async (req, res) => {
+  try {
+    const { orderId, pageNo } = req.params;
+    console.log('[DBG] /notes/:orderId/page/:pageNo/image called', { orderId, pageNo, hasSession: !!req.user, tokenPresent: !!req.query.token });
 
+    // validate token if present
+    const token = req.query.token;
+    let tokenData = null;
+    if (token) {
+      tokenData = validateViewToken(token);
+      console.log('[DBG] tokenData:', tokenData ? { userId: tokenData.userId, orderId: tokenData.orderId } : null);
+      if (!tokenData) {
+        console.warn('[DBG] token invalid/expired');
+        return res.status(401).json({ error: 'token_invalid_or_expired' });
+      }
+      // sanity: token.orderId should match path orderId
+      if (String(tokenData.orderId) !== String(orderId)) {
+        console.warn('[DBG] token/orderId mismatch', { tokenOrderId: tokenData.orderId, pathOrderId: orderId });
+        return res.status(403).json({ error: 'token_order_mismatch' });
+      }
+    } else {
+      // session path: must be logged in
+      if (!req.user) {
+        console.warn('[DBG] no session and no token');
+        return res.status(401).json({ error: 'login_required' });
+      }
+      console.log('[DBG] session user:', req.user._id);
+    }
+
+    // find the order and product
+    let product = null;
+    if (req.user && !tokenData) {
+      // session ownership check
+      await req.user.populate('orders.product');
+      const order = req.user.orders.id(orderId);
+      if (!order) {
+        console.warn('[DBG] session user does not own order:', { userId: req.user._id, orderId });
+        return res.status(404).json({ error: 'order_not_found_for_user' });
+      }
+      if (!order.product) {
+        console.warn('[DBG] order has no product attached', { orderId });
+        return res.status(404).json({ error: 'order_has_no_product' });
+      }
+      product = await Item.findById(order.product).lean();
+    } else {
+      // token path: lookup order in DB to find product
+      const userWithOrder = await User.findOne({ 'orders._id': orderId }).populate('orders.product').lean();
+      if (!userWithOrder) {
+        console.warn('[DBG] token path: order not found in any user orders', { orderId });
+        return res.status(404).json({ error: 'order_not_found' });
+      }
+      const theOrder = userWithOrder.orders.find(o => String(o._id) === String(orderId));
+      if (!theOrder) {
+        console.warn('[DBG] token path: specific order entry missing', { orderId });
+        return res.status(404).json({ error: 'order_entry_missing' });
+      }
+      if (!theOrder.product) {
+        console.warn('[DBG] token path: order has no product attached', { orderId });
+        return res.status(404).json({ error: 'order_has_no_product' });
+      }
+      product = theOrder.product; // already populated via lean
+    }
+
+    console.log('[DBG] product found:', product ? { id: product._id, pdf_url: !!product.pdf_url } : null);
+
+    if (!product || !product.pdf_url) {
+      return res.status(404).json({ error: 'pdf_source_missing', detail: 'Item.pdf_url is missing or empty' });
+    }
+
+    // Build local image path under ./out-pages/<productId> (generated by convertPDFPageToImage)
+    const pageIndex = Number(pageNo) || 1;
+    const fileName = `page-${String(pageIndex).padStart(3, '0')}.jpg`;
+    const localDir = path.join(__dirname, 'out-pages', String(product._id));
+    const localPath = path.join(localDir, fileName);
+
+    // If the file does not exist, generate it on demand
+    if (!fs.existsSync(localPath)) {
+      console.warn('[DBG] requested local page image missing, generating:', localPath);
+      const pdfMatch = product.pdf_url.match(/\/v\d+\/(.+)\.pdf/);
+      if (pdfMatch) {
+        const pdfPublicId = pdfMatch[1];
+        try {
+          await convertPDFPageToImage(pdfPublicId, pageIndex, product._id.toString());
+        } catch (err) {
+          console.error('Error converting single PDF page (image route):', err);
+          return res.status(500).json({ error: 'image_generation_failed', msg: String(err) });
+        }
+      }
+    }
+    // After generation, check again
+    if (!fs.existsSync(localPath)) {
+      return res.status(404).json({ error: 'page_image_not_found' });
+    }
+    const publicUrl = `/out-pages/${product._id}/${fileName}`;
+    console.log('[DBG] returning local image url:', publicUrl);
+    return res.json({ url: publicUrl });
+  } catch (err) {
+    console.error('[DBG] error in page image route', err);
+    return res.status(500).json({ error: 'server_error', msg: String(err) });
+  }
+});
 
 
 app.get('/notes/:orderId/page/:pageNo', isLoggedIn, async function(req, res) {
@@ -1270,8 +1267,7 @@ app.post('/admin/add', isLoggedIn, isAdmin, upload.fields([
     }
   }
 
-
-// Single, robust /notes/:orderId/page/:pageNo/image route with only [PDF2IMG] and [notes image] logs
+  // Add this to app.js (after cloudinary.config and your models)
 app.get('/notes/:orderId/page/:pageNo/image', async (req, res) => {
   try {
     const { orderId, pageNo } = req.params;
@@ -1321,34 +1317,35 @@ app.get('/notes/:orderId/page/:pageNo/image', async (req, res) => {
     // Use the same normalization function as the conversion utility
     const rawPdfUrl = normalizeDropboxUrlForFetch(product.pdf_url);
 
-    // [notes image] log for debugging
-    console.log('[notes image] rawPdfUrl used for fetch:', rawPdfUrl && rawPdfUrl.slice(0,200) + '...');
+// debug log to confirm what's being passed to Cloudinary
+console.log('[notes image] rawPdfUrl used for fetch:', rawPdfUrl && rawPdfUrl.slice(0,200) + '...');
 
-    const signedUrl = cloudinary.url(rawPdfUrl, {
-      type: 'fetch',
-      resource_type: 'image',
-      page: Number(pageNo) || 1,
-      format: 'jpg',
-      quality: 'auto',
-      dpr: 'auto',
-      sign_url: true,
-      expires_at: expiresAt,
-      transformation: [
-        {
-          overlay: {
-            text: watermarkText,
-            font_family: 'Arial',
-            font_size: 18,
-            font_weight: 'bold',
-            opacity: 40,
-            color: '#000000'
-          },
-          gravity: 'south_east',
-          x: 20,
-          y: 20
-        }
-      ]
-    });
+const expiresAta = Math.floor(Date.now() / 1000) + 300; // short TTL (5 min)
+const signedUrl = cloudinary.url(rawPdfUrl, {
+  type: 'fetch',
+  resource_type: 'image',
+  page: Number(pageNo) || 1,
+  format: 'jpg',
+  quality: 'auto',
+  dpr: 'auto',
+  sign_url: true,
+  expires_at: expiresAta,
+  transformation: [
+    {
+      overlay: {
+        text: watermarkText,
+        font_family: 'Arial',
+        font_size: 18,
+        font_weight: 'bold',
+        opacity: 40,
+        color: '#000000'
+      },
+      gravity: 'south_east',
+      x: 20,
+      y: 20
+    }
+  ]
+});
 
     // Return JSON to client { url }
     return res.json({ url: signedUrl });
@@ -1410,7 +1407,6 @@ app.get('/notes/:orderId/page/:pageNo/image', async (req, res) => {
         pdfUrl = sharedUrl;
         // Clean up temp file
         require('fs').unlinkSync(tempPath);
-        // Do not convert PDF to images at upload time; viewer will render PDF directly
         pageImages = [];
       } catch (pdfError) {
         console.error('PDF processing error:', pdfError);

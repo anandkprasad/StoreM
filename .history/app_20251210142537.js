@@ -128,7 +128,6 @@ app.get('/pdf/:id', async (req, res) => {
       if (maybeBinary) {
         const buffer = Buffer.isBuffer(maybeBinary) ? maybeBinary : Buffer.from(maybeBinary, 'binary');
         res.setHeader('Content-Type', 'application/pdf');
-        res.setHeader('Content-Disposition', `inline; filename="${filename}"`);
         res.setHeader('Content-Length', buffer.length);
         return res.send(buffer);
       }
@@ -139,18 +138,10 @@ app.get('/pdf/:id', async (req, res) => {
 
     // Fallback: content API stream
     const apiUrl = 'https://content.dropboxapi.com/2/files/download';
-    // Ensure we have a fresh access token
-    try {
-      if (!dropboxAccessToken) {
-        await refreshDropboxToken();
-      }
-    } catch (rtErr) {
-      console.error('[pdf proxy] Failed to refresh Dropbox token:', rtErr);
-    }
     const resp = await fetch(apiUrl, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${dropboxAccessToken}`,
+        'Authorization': `Bearer ${DROPBOX_ACCESS_TOKEN}`,
         'Dropbox-API-Arg': JSON.stringify({ path: dropboxPath })
       }
     });
@@ -164,7 +155,6 @@ app.get('/pdf/:id', async (req, res) => {
 
     // Stream the PDF to the client
     res.setHeader('Content-Type', resp.headers.get('content-type') || 'application/pdf');
-    res.setHeader('Content-Disposition', `inline; filename="${filename}"`);
     if (resp.headers.get('content-length')) res.setHeader('Content-Length', resp.headers.get('content-length'));
     // optional CORS header (not necessary for same-origin)
     res.setHeader('Access-Control-Allow-Origin', '*');
@@ -1410,8 +1400,15 @@ app.get('/notes/:orderId/page/:pageNo/image', async (req, res) => {
         pdfUrl = sharedUrl;
         // Clean up temp file
         require('fs').unlinkSync(tempPath);
-        // Do not convert PDF to images at upload time; viewer will render PDF directly
-        pageImages = [];
+        // Convert PDF to Cloudinary-hosted page images (run at upload time)
+        try {
+          console.log('[pdf-upload] Starting page conversion for item', itemId);
+          pageImages = await convertDropboxPdfToCloudinaryPages(pdfUrl, itemId, 300);
+          console.log('[pdf-upload] Page conversion finished. pages:', pageImages.length);
+        } catch (convErr) {
+          console.error('[pdf-upload] Error converting PDF pages:', convErr);
+          pageImages = [];
+        }
       } catch (pdfError) {
         console.error('PDF processing error:', pdfError);
         throw pdfError;

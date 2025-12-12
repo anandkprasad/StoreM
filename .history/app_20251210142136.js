@@ -66,12 +66,8 @@ var app = express();
 // Secure proxy: serves /pdf/:productId.pdf only if logged-in user owns the order for that product
 app.get('/pdf/:id', async (req, res) => {
   try {
-    // Allow either a valid view token or a logged-in user session
-    const token = req.query.token;
-    let tokenData = null;
-    if (token) tokenData = validateViewToken(token);
-
-    if (!tokenData && !req.user) return res.status(401).send('Login required');
+    // enforce login (session cookie must be present)
+    if (!req.user) return res.status(401).send('Login required');
 
     const raw = req.params.id || '';
     const base = raw.replace(/\.pdf$/i, '');
@@ -84,37 +80,20 @@ app.get('/pdf/:id', async (req, res) => {
       return res.status(400).send('Invalid file id');
     }
 
-    // Authorization: if token provided, validate token refers to an order that contains this product
-    if (tokenData) {
-      try {
-        // Find the user/order referenced by token and confirm the order contains this product
-        const tokenUser = await User.findOne({ _id: tokenData.userId }).lean();
-        if (!tokenUser) return res.status(403).send('Forbidden');
-        const theOrder = (tokenUser.orders || []).find(o => String(o._id) === String(tokenData.orderId));
-        if (!theOrder) return res.status(403).send('Forbidden');
-        if (String(theOrder.product) !== String(base)) {
-          console.warn('[pdf proxy] Token order/product mismatch', { orderId: tokenData.orderId, productRequested: base, productInOrder: theOrder.product });
-          return res.status(403).send('Forbidden');
-        }
-        // authorized via token
-      } catch (e) {
-        console.error('[pdf proxy] Token authorization error', e);
-        return res.status(403).send('Forbidden');
-      }
-    } else {
-      // session-based authorization: Ensure the logged-in user actually purchased / owns this product
-      const userId = req.user._id;
-      const user = await User.findById(userId).lean(); // fresh copy from DB
-      if (!user) return res.status(401).send('User session invalid');
+    // Ensure the logged-in user actually purchased / owns this product
+    // We'll check user's orders for a matching product ObjectId
+    const userId = req.user._id;
+    const user = await User.findById(userId).lean(); // fresh copy from DB
+    if (!user) return res.status(401).send('User session invalid');
 
-      const owns = (user.orders || []).some(o => {
-        return String(o.product) === String(base);
-      });
+    const owns = (user.orders || []).some(o => {
+      // o.product may be ObjectId or string — coerce both sides to string
+      return String(o.product) === String(base);
+    });
 
-      if (!owns) {
-        console.warn(`[pdf proxy] User ${userId} attempted to access product ${base} but does not own it`);
-        return res.status(403).send('Forbidden');
-      }
+    if (!owns) {
+      console.warn(`[pdf proxy] User ${userId} attempted to access product ${base} but does not own it`);
+      return res.status(403).send('Forbidden');
     }
 
     // At this point: allowed. Try to stream file from Dropbox.
@@ -128,7 +107,6 @@ app.get('/pdf/:id', async (req, res) => {
       if (maybeBinary) {
         const buffer = Buffer.isBuffer(maybeBinary) ? maybeBinary : Buffer.from(maybeBinary, 'binary');
         res.setHeader('Content-Type', 'application/pdf');
-        res.setHeader('Content-Disposition', `inline; filename="${filename}"`);
         res.setHeader('Content-Length', buffer.length);
         return res.send(buffer);
       }
@@ -139,18 +117,10 @@ app.get('/pdf/:id', async (req, res) => {
 
     // Fallback: content API stream
     const apiUrl = 'https://content.dropboxapi.com/2/files/download';
-    // Ensure we have a fresh access token
-    try {
-      if (!dropboxAccessToken) {
-        await refreshDropboxToken();
-      }
-    } catch (rtErr) {
-      console.error('[pdf proxy] Failed to refresh Dropbox token:', rtErr);
-    }
     const resp = await fetch(apiUrl, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${dropboxAccessToken}`,
+        'Authorization': `Bearer ${DROPBOX_ACCESS_TOKEN}`,
         'Dropbox-API-Arg': JSON.stringify({ path: dropboxPath })
       }
     });
@@ -164,7 +134,6 @@ app.get('/pdf/:id', async (req, res) => {
 
     // Stream the PDF to the client
     res.setHeader('Content-Type', resp.headers.get('content-type') || 'application/pdf');
-    res.setHeader('Content-Disposition', `inline; filename="${filename}"`);
     if (resp.headers.get('content-length')) res.setHeader('Content-Length', resp.headers.get('content-length'));
     // optional CORS header (not necessary for same-origin)
     res.setHeader('Access-Control-Allow-Origin', '*');
@@ -1410,8 +1379,15 @@ app.get('/notes/:orderId/page/:pageNo/image', async (req, res) => {
         pdfUrl = sharedUrl;
         // Clean up temp file
         require('fs').unlinkSync(tempPath);
-        // Do not convert PDF to images at upload time; viewer will render PDF directly
-        pageImages = [];
+        // Convert PDF to Cloudinary-hosted page images (run at upload time)
+        try {
+          console.log('[pdf-upload] Starting page conversion for item', itemId);
+          pageImages = await convertDropboxPdfToCloudinaryPages(pdfUrl, itemId, 300);
+          console.log('[pdf-upload] Page conversion finished. pages:', pageImages.length);
+        } catch (convErr) {
+          console.error('[pdf-upload] Error converting PDF pages:', convErr);
+          pageImages = [];
+        }
       } catch (pdfError) {
         console.error('PDF processing error:', pdfError);
         throw pdfError;
