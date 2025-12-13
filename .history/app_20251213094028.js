@@ -1424,9 +1424,8 @@ app.get('/notes/:orderId/page/:pageNo/image', async (req, res) => {
         pdfUrl = sharedUrl;
         // Clean up temp file
         require('fs').unlinkSync(tempPath);
-        // Do not convert PDF to images at upload time; viewer will render PDF directly.
-        // Preserve any page images uploaded via the admin form; do NOT reset `pageImages` here.
-        // (Previously this code cleared `pageImages`, which removed uploaded image URLs.)
+        // Do not convert PDF to images at upload time; viewer will render PDF directly
+        pageImages = [];
       } catch (pdfError) {
         console.error('PDF processing error:', pdfError);
         throw pdfError;
@@ -1489,7 +1488,7 @@ app.get('/admin/edit/:id', isLoggedIn, isAdmin, function(req, res) {
   })();
 });
 
-app.post('/admin/edit/:id', isLoggedIn, isAdmin, upload.fields([{ name: 'images', maxCount: 10 }, { name: 'image', maxCount: 1 }]), async (req, res) => {
+app.post('/admin/edit/:id', isLoggedIn, isAdmin, upload.fields([{ name: 'images', maxCount: 10 }]), async (req, res) => {
   try {
     const itemId = req.params.id;
     const { name, description, price } = req.body;
@@ -1504,16 +1503,9 @@ app.post('/admin/edit/:id', isLoggedIn, isAdmin, upload.fields([{ name: 'images'
     // default to existing image URL
     let imageUrl = item.image_url;
 
-    // if new images were uploaded, accept both 'images' (multiple) and 'image' (single) and merge
-    const uploadedFiles = [];
-    if (req.files) {
-      if (Array.isArray(req.files.images) && req.files.images.length) uploadedFiles.push(...req.files.images);
-      if (Array.isArray(req.files.image) && req.files.image.length) uploadedFiles.push(...req.files.image);
-      if (req.file && req.file.buffer) uploadedFiles.push(req.file);
-    }
-
-    if (uploadedFiles.length) {
-      const uploadPromises = uploadedFiles.map(file => new Promise((resolve, reject) => {
+    // if new images were uploaded, upload each to Cloudinary and replace imageUrl & append page_images
+    if (req.files && req.files.images && req.files.images.length) {
+      const uploadPromises = req.files.images.map(file => new Promise((resolve, reject) => {
         const uploadStream = cloudinary.uploader.upload_stream(
           { folder: 'store-items' },
           (error, result) => {
@@ -1527,6 +1519,7 @@ app.post('/admin/edit/:id', isLoggedIn, isAdmin, upload.fields([{ name: 'images'
       try {
         const urls = await Promise.all(uploadPromises);
         imageUrl = urls[0] || imageUrl;
+        // merge with existing page_images array
         item.page_images = Array.isArray(item.page_images) ? item.page_images.concat(urls) : urls;
       } catch (err) {
         console.error('[admin/edit] image upload error', err);

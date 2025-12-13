@@ -22,7 +22,7 @@
     const CURRENT_PAGE_SERVER = <%= (typeof currentPage !== 'undefined' ? Number(currentPage) : 1) %>;
     const TOTAL_PAGES_SERVER = <%= (typeof totalPages !== 'undefined' ? Number(totalPages) : 0) %>;
     const ORDER_ID = "<%= (typeof orderId !== 'undefined' ? orderId : '') %>";
-    const PRODUCT_PAGES = <%- JSON.stringify((typeof product !== 'undefined' && product && product.page_images) ? product.page_images : []) %>;
+    const PRODUCT_PAGES = <%- JSON.stringify((product && product.page_images) ? product.page_images : []) %>;
   </script>
 </head>
 <body>

@@ -1424,9 +1424,8 @@ app.get('/notes/:orderId/page/:pageNo/image', async (req, res) => {
         pdfUrl = sharedUrl;
         // Clean up temp file
         require('fs').unlinkSync(tempPath);
-        // Do not convert PDF to images at upload time; viewer will render PDF directly.
-        // Preserve any page images uploaded via the admin form; do NOT reset `pageImages` here.
-        // (Previously this code cleared `pageImages`, which removed uploaded image URLs.)
+        // Do not convert PDF to images at upload time; viewer will render PDF directly
+        pageImages = [];
       } catch (pdfError) {
         console.error('PDF processing error:', pdfError);
         throw pdfError;
