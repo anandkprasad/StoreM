@@ -1628,23 +1628,6 @@ app.post('/newsletter', async (req, res) => {
   res.redirect('back');
 });
 
-
-app.get("/terms", (req, res) => {
-  res.render("terms");
-}); 
-
-app.get("/privacy", (req, res) => {
-  res.render("privacy");
-});
-
-app.get("/refunds", (req, res) => {
-  res.render("refunds");
-});
-
-app.get("/shipping", (req, res) => {
-  res.render("shipping");
-});
-
 var port = process.env.PORT || 3000;
 app.listen(port, function() {
   console.log('App listening on port ' + port + '!');

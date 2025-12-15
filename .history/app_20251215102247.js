@@ -1635,15 +1635,7 @@ app.get("/terms", (req, res) => {
 
 app.get("/privacy", (req, res) => {
   res.render("privacy");
-});
-
-app.get("/refunds", (req, res) => {
-  res.render("refunds");
-});
-
-app.get("/shipping", (req, res) => {
-  res.render("shipping");
-});
+}
 
 var port = process.env.PORT || 3000;
 app.listen(port, function() {
