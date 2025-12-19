@@ -120,10 +120,10 @@
       <div class="mb-3">
         <div class="price">₹ <%= product.price %></div>
         <% if (product.original_price && product.original_price > product.price) { %>
-          <div class="muted" style="text-decoration:line-through;">₹ <%= product.original_price %></div>
         <% } %>
       </div>
 
+      <p class="mb-3 muted" style="line-height:1.55;"><%= product.short_description || product.description || '' %></p>
 
       <div class="row mb-3">
         <div class="col-6">
