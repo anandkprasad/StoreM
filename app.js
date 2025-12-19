@@ -1098,7 +1098,7 @@ app.post('/login', function(req, res, next) {
       }
       console.log("Login successful for:", user.username);
       req.flash('success', 'Logged in successfully!');
-      res.redirect('/dashboard');
+      res.redirect('/');
     });
   })(req, res, next);
 });

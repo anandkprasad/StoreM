@@ -1,0 +1,242 @@
+<%- include('./partials/header') %>
+
+<!-- Amazon-style product list -->
+<div class="container-fluid pt-3" style="margin-top: 18px;">
+  <style>
+    /* Scoped: amazon-like product list */
+    .amazon-cards .product-row { padding: 14px 0; border-bottom: 1px solid rgba(0,0,0,0.06); }
+    .amazon-cards .product-card { display:flex; gap:20px; align-items:flex-start; width:100%; }
+    .amazon-cards .product-thumb { width:160px; min-width:160px; height:160px; background:#fff; display:flex; align-items:center; justify-content:center; border-radius:8px; box-shadow:0 6px 18px rgba(10,20,40,0.04); overflow:hidden; }
+    .amazon-cards .product-thumb img { width:100%; height:100%; object-fit:cover; }
+    .amazon-cards .product-info { flex:1; min-width:0; }
+    .amazon-cards h5 { margin:0 0 6px 0; font-size:1.02rem; font-weight:600; line-height:1.25; color:#212529; }
+    .amazon-cards .byline { font-size:0.9rem; color:#6c757d; margin-bottom:8px; display:block; }
+    .amazon-cards .desc { color:#495057; font-size:0.95rem; margin-bottom:10px; display:block; max-height:3.1rem; overflow:hidden; text-overflow:ellipsis; }
+    .amazon-cards .meta { display:flex; align-items:center; gap:12px; font-size:0.9rem; color:#6c757d; margin-bottom:8px; }
+    .amazon-cards .rating i { color:#f6b01e; margin-right:3px; font-size:0.95rem; }
+    .amazon-cards .price-wrap { display:flex; align-items:baseline; gap:10px; margin-bottom:6px; }
+    .amazon-cards .price { font-size:1.18rem; font-weight:700; color:#111; }
+    .amazon-cards .price-old { text-decoration:line-through; color:#9aa0a6; font-size:0.95rem; }
+    .amazon-cards .prime-badge { background:#232f3e; color:#fff; padding:4px 8px; border-radius:4px; font-size:0.82rem; font-weight:700; }
+    .amazon-cards .actions { display:flex; align-items:center; gap:10px; margin-left:auto; }
+    .amazon-cards .btn-buy { min-width:120px; }
+    @media (max-width: 991px) {
+      .amazon-cards .product-card { flex-direction:column; align-items:center; text-align:center; }
+      .amazon-cards .product-thumb { width:220px; min-width:220px; height:220px; margin-bottom:12px; }
+      .amazon-cards .actions { width:100%; justify-content:center; margin-top:8px; }
+      .amazon-cards .product-info { width:100%; }
+    }
+  </style>
+
+ <div class="amazon-cards">
+  <a href="#shop-now"
+     style="display:block; cursor:pointer;">
+    <img
+      src="./banner.png"
+      alt="Karan Coaching Centre Banner"
+      style="
+        width:100%;
+        border-radius:12px;
+        box-shadow:0 6px 20px rgba(21,30,60,0.04);
+        margin-bottom:24px;
+        display:block;
+      ">
+  </a>
+</div>
+
+</div>
+</div>
+<!-- End amazon-style list -->
+
+<!-- Featured Blocks -->
+<div class="container-fluid pt-5">
+  <div class="row px-xl-5 pb-3">
+    <div class="col-lg-3 col-md-6 col-sm-12 pb-1">
+      <div class="d-flex align-items-center border mb-4 p-4 rounded" style="background:#fff;box-shadow:0 6px 20px rgba(21,30,60,0.04)">
+        <i class="fa fa-check text-primary mr-3 fa-2x"></i>
+        <div>
+          <h6 class="m-0 font-weight-bold">Quality Product</h6>
+          <small class="text-muted">Handpicked ebooks</small>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-3 col-md-6 col-sm-12 pb-1">
+      <div class="d-flex align-items-center border mb-4 p-4 rounded" style="background:#fff;box-shadow:0 6px 20px rgba(21,30,60,0.04)">
+        <i class="fa fa-shipping-fast text-primary mr-3 fa-2x"></i>
+        <div>
+          <h6 class="m-0 font-weight-bold">Instant Delivery</h6>
+          <small class="text-muted">Access after purchase</small>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-3 col-md-6 col-sm-12 pb-1">
+      <div class="d-flex align-items-center border mb-4 p-4 rounded" style="background:#fff;box-shadow:0 6px 20px rgba(21,30,60,0.04)">
+        <i class="fas fa-exchange-alt text-primary mr-3 fa-2x"></i>
+        <div>
+          <h6 class="m-0 font-weight-bold">1000+ Students</h6>
+          <small class="text-muted">Mentored</small>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-3 col-md-6 col-sm-12 pb-1">
+      <div class="d-flex align-items-center border mb-4 p-4 rounded" style="background:#fff;box-shadow:0 6px 20px rgba(21,30,60,0.04)">
+        <i class="fa fa-phone-volume text-primary mr-3 fa-2x"></i>
+        <div>
+          <h6 class="m-0 font-weight-bold">24/7 Support</h6>
+          <small class="text-muted">We're here to help</small>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Subscribe -->
+<div class="container-fluid bg-secondary my-5">
+  <div class="row justify-content-md-center py-5 px-xl-5">
+    <div class="col-md-6 col-12 py-5">
+      <div class="text-center mb-2 pb-2">
+        <h2 class="section-title px-5 mb-3"><span class="bg-secondary px-2">Stay Updated</span></h2>
+        <p class="text-muted">Get curated recommendations, new releases and exclusive discounts in your inbox.</p>
+      </div>
+      <% if (success && success.length > 0) { %>
+        <div class="alert alert-success"><%= success[0] %></div>
+      <% } %>
+      <% if (error && error.length > 0) { %>
+        <div class="alert alert-danger"><%= error[0] %></div>
+      <% } %>
+      <form action="/newsletter" method="POST" class="d-flex">
+        <div class="input-group mr-2">
+          <input type="text" name="name" class="form-control border-white p-3" placeholder="Your Name" aria-label="Name">
+        </div>
+        <div class="input-group mr-2">
+          <input type="email" name="email" class="form-control border-white p-3" placeholder="Email Goes Here" aria-label="Email" required>
+        </div>
+        <div class="input-group-append">
+          <button class="btn btn-primary btn-pill px-4" type="submit">Subscribe</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Products Grid — compact professional grid (3-up desktop, 2-up tablet, 1-up mobile) -->
+<div class="container-fluid pt-5 shop-grid-grid" id="shop-now">
+  <div class="text-center mb-4">
+    <h2 class="section-title px-5"><span class="px-2">Shop Now</span></h2>
+  </div>
+
+  <style>
+    /* Scoped styles for the grid */
+    .shop-grid-grid .card { border-radius:14px; overflow:hidden; transition:transform .18s ease, box-shadow .18s ease; }
+    .shop-grid-grid .card:hover { transform:translateY(-6px); box-shadow:0 20px 40px rgba(10,20,40,0.08); }
+    .shop-grid-grid .product-img-wrap { height:220px; display:flex; align-items:center; justify-content:center; background:linear-gradient(180deg,#fff,#fbfdff); }
+    .shop-grid-grid .product-img { width:100%; height:100%; object-fit:cover; border-bottom-left-radius:0; border-bottom-right-radius:0; }
+    .shop-grid-grid .card-body { padding:16px; }
+    .shop-grid-grid .title { font-size:1rem; font-weight:700; color:#111827; margin-bottom:6px; line-height:1.2; min-height:2.4em; }
+    .shop-grid-grid .short-desc { color:#6b7280; font-size:.95rem; min-height:2.6em; overflow:hidden; margin-bottom:10px; }
+    .shop-grid-grid .meta-row { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:10px; }
+    .shop-grid-grid .rating i { color:#f6b01e; margin-right:2px; font-size:0.92rem; }
+    .shop-grid-grid .price { font-weight:800; font-size:1.08rem; color:#0f172a; }
+    .shop-grid-grid .price-old { text-decoration:line-through; color:#9aa0a6; font-size:.92rem; margin-left:8px; }
+    .shop-grid-grid .card-footer { background:transparent; border-top:0; padding:12px 16px; display:flex; align-items:center; gap:8px; }
+    .shop-grid-grid .btn-buy { min-width:140px; padding:10px 14px; border-radius:10px; font-weight:700; box-shadow:0 8px 24px rgba(15,40,80,0.06); }
+    .shop-grid-grid .btn-view { padding:8px 12px; border-radius:8px; }
+    .shop-grid-grid .badge-tag { background:#eef2ff; color:#27377b; font-weight:700; padding:6px 8px; border-radius:8px; font-size:.82rem; }
+
+    @media (min-width: 992px) {
+      /* Align buy right inside footer using flex and ml-auto on desktop */
+      .shop-grid-grid .card-footer { justify-content:flex-end; }
+      .shop-grid-grid .btn-view { margin-right:auto; }
+    }
+
+    @media (max-width: 991px) {
+      .shop-grid-grid .product-img { height:220px; width:100%; }
+      .shop-grid-grid .card-footer { flex-direction:column-reverse; align-items:stretch; gap:10px; }
+      .shop-grid-grid .btn-buy { width:100%; min-width:0; }
+      .shop-grid-grid .btn-view { width:100%; }
+      .shop-grid-grid .title { min-height:3.6em; }
+    }
+  </style>
+
+  <div class="row px-xl-5 pb-3">
+    <% (featuredItems.concat(otherItems)).forEach(function(item) { %>
+      <div class="col-lg-4 col-md-6 col-sm-12 mb-4 d-flex align-items-stretch">
+        <div class="card w-100 d-flex flex-column">
+
+          <!-- image -->
+          <div class="product-img-wrap"
+     style="
+       width:100%;
+       height:220px;
+       overflow:hidden;
+       border-radius:12px 12px 0 0;
+     ">
+  <a href="/product/<%= item._id %>"
+     style="
+       display:block;
+       width:100%;
+       height:100%;
+     ">
+    <img
+      loading="lazy"
+      src="<%= item.image_url || '/img/product-1.jpg' %>"
+      alt="<%= item.name %>"
+      style="
+        width:100%;
+        height:100%;
+        object-fit:cover;
+        display:block;
+      ">
+  </a>
+</div>
+
+
+          <!-- body -->
+          <div class="card-body d-flex flex-column">
+            <a href="/product/<%= item._id %>" style="text-decoration:none;">
+              <div class="title"><%= item.name %></div>
+            </a>
+
+            <% if (item.author) { %>
+              <div class="mb-1" style="color:#6b7280;font-size:.92rem;">by <strong><%= item.author %></strong></div>
+            <% } %>
+
+            <div class="short-desc">
+              <% let words = (item.description || '').split(/\s+/); %>
+              <%= words.slice(0, 28).join(' ') %><%= words.length > 28 ? '...' : '' %>
+            </div>
+
+            <div class="meta-row mt-auto">
+              <div class="d-flex align-items-center">
+             
+              </div>
+
+              <div class="text-right">
+                <div class="price">₹ <%= item.price %>
+                  <% if (item.original_price && item.original_price > item.price) { %>
+                    <span class="price-old">₹ <%= item.original_price %></span>
+                  <% } %>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- footer actions -->
+          <div class="card-footer">
+
+            <!-- BIG Buy button (aligned right on desktop using ml-auto) -->
+            <a href="/product/<%= item._id %>" class="btn btn-primary btn-buy ml-auto" role="button" aria-label="Buy <%= item.name %> now">
+              <i class="fas fa-shopping-cart mr-2"></i>BUY NOW
+            </a>
+          </div>
+        </div>
+      </div>
+    <% }); %>
+  </div>
+</div>
+<!-- End Products Grid -->
+
+<%- include('./partials/footer') %>

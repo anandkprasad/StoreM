@@ -28,72 +28,22 @@
     }
   </style>
 
-  <div class="amazon-cards">
-    <% featuredItems.forEach(function(item) { %>
-      <div class="row product-row">
-        <div class="col-12">
-          <div class="product-card">
+ <div class="amazon-cards">
+  <a href="#shop-now"
+     style="display:block; cursor:pointer;">
+    <img
+      src="./banner.png"
+      alt="Karan Coaching Centre Banner"
+      style="
+        width:100%;
+        border-radius:12px;
+        box-shadow:0 6px 20px rgba(21,30,60,0.04);
+        margin-bottom:24px;
+        display:block;
+      ">
+  </a>
+</div>
 
-            <!-- thumb -->
-            <div class="product-thumb">
-              <a href="/product/<%= item._id %>"><img loading="lazy" src="<%= item.image_url || '/img/product-1.jpg' %>" alt="<%= item.name %>"></a>
-            </div>
-
-            <!-- info -->
-            <div class="product-info">
-              <h5><a href="/product/<%= item._id %>" class="text-dark" style="text-decoration:none;"><%= item.name %></a></h5>
-              <% if (item.author) { %>
-                <span class="byline">by <strong><%= item.author %></strong></span>
-              <% } %>
-
-              <div class="desc">
-                <% let words = (item.description || '').split(/\s+/); %>
-                <%= words.slice(0, 28).join(' ') %><%= words.length > 28 ? '...' : '' %>
-              </div>
-
-              <div class="meta">
-                
-              </div>
-
-              <div class="price-wrap d-flex align-items-center">
-                <div class="price-wrap-inner">
-                  <div class="price">₹ <%= item.price %></div>
-                  <% if (item.original_price && item.original_price > item.price) { %>
-                    <div class="price-old">₹ <%= item.original_price %></div>
-                  <% } %>
-                </div>
-
-                <% if (item.isPrime) { %>
-                  <div style="margin-left:12px;">
-                    <span class="prime-badge">PRIME</span>
-                  </div>
-                <% } %>
-              </div>
-            </div>
-
-            <!-- actions -->
-            <div class="actions d-flex">
-
-              <!-- push Buy to right with ml-auto when parent is flex (desktop) -->
-              <div class="ml-auto d-none d-md-block">
-                <a href="/product/<%= item._id %>" class="btn btn-primary btn-sm btn-buy">
-                  <i class="fas fa-shopping-cart mr-1"></i>Buy Now
-                </a>
-              </div>
-
-              <!-- on small screens show full width buy -->
-              <div class="d-block d-md-none w-100 mt-2">
-                <a href="/product/<%= item._id %>" class="btn btn-primary btn-block">
-                  <i class="fas fa-shopping-cart mr-1"></i>Buy Now
-                </a>
-              </div>
-            </div>
-
-          </div>
-        </div>
-      </div>
-    <% }); %>
-  </div>
 </div>
 </div>
 <!-- End amazon-style list -->
@@ -125,7 +75,7 @@
       <div class="d-flex align-items-center border mb-4 p-4 rounded" style="background:#fff;box-shadow:0 6px 20px rgba(21,30,60,0.04)">
         <i class="fas fa-exchange-alt text-primary mr-3 fa-2x"></i>
         <div>
-          <h6 class="m-0 font-weight-bold">100+ Students</h6>
+          <h6 class="m-0 font-weight-bold">1000+ Students</h6>
           <small class="text-muted">Mentored</small>
         </div>
       </div>
@@ -173,7 +123,7 @@
 </div>
 
 <!-- Products Grid — compact professional grid (3-up desktop, 2-up tablet, 1-up mobile) -->
-<div class="container-fluid pt-5 shop-grid-grid">
+<div class="container-fluid pt-5 shop-grid-grid" id="shop-now">
   <div class="text-center mb-4">
     <h2 class="section-title px-5"><span class="px-2">Shop Now</span></h2>
   </div>
